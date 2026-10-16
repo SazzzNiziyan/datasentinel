@@ -60,10 +60,11 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Create design tokens for ink, paper, surfaces, signal colors, borders, typography, and spacing. (D-15; contrast enforced by tests)
 - [x] Build the global app shell: workspace header, left navigation, page frame, and account menu. (D-16; sample session in `apps/web/src/app/sampleSession.ts`)
   - Vite scaffold notes (D-13): `vite.config.ts` with `resolve.conditions: ['@datasentinel/source', ...defaultClientConditions]` and `envDir: '../..'`; `tsconfig.node.json` extending the base (`noEmit`, `incremental`, `types: ["node"]`, include `vite.config.ts`) referenced from `apps/web/tsconfig.json`; `src/vite-env.d.ts` typing each `VITE_*` variable with `strictImportMetaEnv`; scripts `dev`, `build` (`tsc -b && vite build`), `preview`.
-- [ ] Build reusable status, severity, metric, table, empty-state, and confirmation components.
+- [x] Build reusable status, severity, metric, table, empty-state, and confirmation components. (D-17; `EvidenceRow`, `RuleSummary`, `Timeline`, table filters/pagination, and dialog approval state are built with the screens that need them)
 - [ ] Create responsive loading, error, empty, and permission-denied states.
 - [ ] Build static versions of Dashboard, Incidents, Sources, Datasets, and Settings screens using clearly labeled sample data.
 - [ ] Check keyboard focus, labels, status text, contrast, and narrow-screen behavior.
+  - Include: move focus to the page heading (and announce it) on route change; after choosing a link in the mobile drawer, focus should land on the new page, not the Menu button.
 - [ ] Remove sample data before any screen is presented as connected to live services.
 
 **Phase gate:** users can navigate a coherent, responsive interface; every state is visibly sample or connected.

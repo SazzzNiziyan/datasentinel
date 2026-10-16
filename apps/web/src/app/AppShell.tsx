@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, Outlet } from 'react-router';
 import { AccountMenu } from './AccountMenu.tsx';
 import { BrandMark } from './BrandMark.tsx';
@@ -22,16 +22,27 @@ export function AppShell() {
   const drawer = useRef<HTMLDialogElement>(null);
   const closeDrawer = () => drawer.current?.close();
 
+  // At desktop width the rail shows the navigation, so a drawer left open
+  // would trap focus behind a duplicate. Close it when the window grows.
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 64rem)');
+    const onChange = (event: { matches: boolean }) => {
+      if (event.matches) drawer.current?.close();
+    };
+    desktop.addEventListener('change', onChange);
+    return () => desktop.removeEventListener('change', onChange);
+  }, []);
+
   return (
     <div className="shell">
       <a className="skip-link" href="#content">
         Skip to content
       </a>
 
-      <aside className="shell__rail">
+      <div className="shell__rail">
         <Brand />
         <NavList />
-      </aside>
+      </div>
 
       <dialog
         ref={drawer}

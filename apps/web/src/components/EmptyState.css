@@ -1,0 +1,21 @@
+.empty-state {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  max-width: 36rem;
+  padding: var(--space-8) var(--space-6);
+  border: var(--border-width) dashed var(--color-border-control);
+}
+
+.empty-state__title {
+  font-size: var(--text-heading);
+}
+
+.empty-state__description {
+  color: var(--color-text-muted);
+  max-width: 60ch;
+}
+
+.empty-state__action {
+  margin-top: var(--space-2);
+}

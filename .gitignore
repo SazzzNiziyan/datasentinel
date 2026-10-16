@@ -56,3 +56,6 @@ Thumbs.db
 
 # Claude Code local-only settings
 .claude/settings.local.json
+
+# Playwright MCP plugin output (screenshots, page snapshots, console logs)
+.playwright-mcp/

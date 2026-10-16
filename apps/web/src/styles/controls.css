@@ -1,0 +1,60 @@
+/* Shared control styles: buttons, text inputs, and utility classes. */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shape {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-weight: var(--weight-strong);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+/* One primary action per view: solid ink, the strongest neutral emphasis.
+ * Red stays reserved for status and severity. */
+.button--primary {
+  color: var(--color-on-action-primary);
+  background: var(--color-action-primary);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-color: var(--color-border-control);
+}
+
+.text-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-control);
+  border-radius: var(--radius);
+}

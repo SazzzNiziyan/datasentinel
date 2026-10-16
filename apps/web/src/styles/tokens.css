@@ -45,6 +45,12 @@
   --color-nav-text: var(--palette-paper);
   --color-nav-muted: var(--palette-line);
 
+  /* The one primary action per view: solid ink (red is for status only). */
+  --color-action-primary: var(--palette-ink);
+  --color-on-action-primary: var(--palette-white);
+  /* Dims the page behind modal dialogs and the navigation drawer. */
+  --color-backdrop: rgb(23 23 23 / 0.5);
+
   /* --- Type ----------------------------------------------------------- */
   --font-sans:
     'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

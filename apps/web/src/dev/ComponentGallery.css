@@ -1,0 +1,34 @@
+.gallery__section {
+  display: grid;
+  gap: var(--space-4);
+  padding-bottom: var(--space-8);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Asymmetric spans on the 12-column grid: the failing metric leads. */
+.gallery__metrics {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+.gallery__metrics > :nth-child(1) {
+  grid-column: span 6;
+}
+
+.gallery__metrics > :nth-child(n + 2) {
+  grid-column: span 3;
+}
+
+@media (max-width: 63.99rem) {
+  .gallery__metrics > * {
+    grid-column: 1 / -1 !important;
+  }
+}

@@ -1,6 +1,8 @@
+// @vitest-environment node
+// Reads tokens.css from disk; no DOM needed.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 
 // WCAG 2.2 AA: 4.5:1 for normal text, 3:1 for meaningful non-text shapes
 // (status marks, control borders, focus rings).
@@ -58,6 +60,7 @@ const pairs: [foreground: string, background: string, minimum: number][] = [
   ['--color-nav-muted', '--color-nav-bg', TEXT],
   ['--color-focus-inverse', '--color-nav-bg', SHAPE],
   ['--color-focus-inverse', '--color-selected', SHAPE],
+  ['--color-on-action-primary', '--color-action-primary', TEXT],
 ];
 
 describe('design token contrast (WCAG AA)', () => {

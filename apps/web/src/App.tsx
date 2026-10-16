@@ -5,10 +5,13 @@ import { primaryNav, secondaryNav } from './app/navigation.ts';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { PendingPage } from './pages/PendingPage.tsx';
 
-// Development-only token preview. Loaded lazily inside the DEV check so that
-// production builds drop its code and its CSS entirely.
+// Development-only previews. Loaded lazily inside the DEV check so that
+// production builds drop their code and CSS entirely.
 const TokenSpecimen = import.meta.env.DEV
-  ? lazy(() => import('./TokenSpecimen.tsx').then((m) => ({ default: m.TokenSpecimen })))
+  ? lazy(() => import('./dev/TokenSpecimen.tsx').then((m) => ({ default: m.TokenSpecimen })))
+  : null;
+const ComponentGallery = import.meta.env.DEV
+  ? lazy(() => import('./dev/ComponentGallery.tsx').then((m) => ({ default: m.ComponentGallery })))
   : null;
 
 export function App() {
@@ -19,6 +22,16 @@ export function App() {
           {[...primaryNav, ...secondaryNav].map((item) => (
             <Route key={item.path} path={item.path} element={<PendingPage item={item} />} />
           ))}
+          {ComponentGallery !== null && (
+            <Route
+              path="/dev/components"
+              element={
+                <Suspense>
+                  <ComponentGallery />
+                </Suspense>
+              }
+            />
+          )}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
         {TokenSpecimen !== null && (

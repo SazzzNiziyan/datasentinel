@@ -1,0 +1,47 @@
+.metric-block {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-top: var(--space-1) solid var(--color-border-strong);
+}
+
+.metric-block__label {
+  font-size: var(--text-compact);
+  color: var(--color-text-muted);
+}
+
+/* The number is the loudest thing in the block. */
+.metric-block__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-display);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-block__unit {
+  font-size: var(--text-heading);
+  color: var(--color-text-muted);
+}
+
+.metric-block__comparison {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: var(--border-width) solid var(--color-divider);
+  font-size: var(--text-compact);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-block__gap {
+  font-weight: var(--weight-strong);
+}
+
+.metric-block__window {
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}

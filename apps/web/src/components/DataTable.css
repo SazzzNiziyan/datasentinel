@@ -1,0 +1,68 @@
+.data-table {
+  overflow-x: auto;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+.data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-compact);
+}
+
+.data-table__caption {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--weight-strong);
+  border-bottom: var(--border-width) solid var(--color-border-strong);
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.data-table th {
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  border-bottom-color: var(--color-border-strong);
+}
+
+.data-table [data-numeric] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.data-table__sort-mark {
+  font-size: 0.7em;
+}
+
+.data-table__message {
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-muted);
+}
+
+/* A failure to load is a problem, not a quiet note: ink text, critical mark. */
+.data-table__message--error {
+  color: var(--color-text);
+}

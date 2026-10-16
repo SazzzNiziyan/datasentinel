@@ -110,7 +110,7 @@
 }
 
 .shell__drawer::backdrop {
-  background: rgb(23 23 23 / 0.5);
+  background: var(--color-backdrop);
 }
 
 .shell__drawer-head {
@@ -318,8 +318,9 @@
 }
 
 @media (max-width: 39.99rem) {
-  .account-button__text,
-  .sample-tag {
+  /* The sample tag stays: sample data must never look live (D-16).
+   * The workspace name truncates instead. */
+  .account-button__text {
     display: none;
   }
 
