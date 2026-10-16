@@ -59,3 +59,6 @@ Thumbs.db
 
 # Playwright MCP plugin output (screenshots, page snapshots, console logs)
 .playwright-mcp/
+
+# Prisma client, generated from packages/db/prisma/schema.prisma on install.
+packages/db/src/generated/

@@ -9,3 +9,6 @@ engineStrict: true
 # an optional native speed-up for BullMQ; without it BullMQ uses plain JS.
 allowBuilds:
   msgpackr-extract: false
+  # Prisma fetches its engines on first use instead (D-26).
+  '@prisma/engines': false
+  prisma: false

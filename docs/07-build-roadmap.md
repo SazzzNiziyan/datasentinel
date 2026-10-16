@@ -6,7 +6,7 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 29 of 147 items. **Now:** Phase D complete (gate met: `pnpm services:up/down/reset`, `/health/ready` names each dependency); next is Phase E.
+- **Last updated:** 2026-10-17. **Done:** 32 of 147 items. **Now:** Phase E (database and workspace access).
 - **Uncommitted work:** the user commits; check `git status` before starting. Everything since D-20 may be uncommitted.
 - **Next item:** the first unchecked box below. Decisions D-01 to D-21 are in `docs/09-decision-log.md`; D-04 to D-08 are still open, so stop and ask before work that needs them (hosting, production storage/secrets, email, LLM, limits/retention).
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells); `pnpm check` is the gate; `pnpm services:up` needs Docker Desktop running.
@@ -94,9 +94,9 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 ## 6. Phase E — Database and workspace access
 
-- [ ] Create the initial Prisma schema for users, sessions, workspaces, and memberships.
-- [ ] Create and apply the first migration locally.
-- [ ] Add a seed command that creates only fake development accounts/data.
+- [x] Create the initial Prisma schema for users, sessions, workspaces, and memberships. (D-26; `packages/db`)
+- [x] Create and apply the first migration locally. (D-26; `pnpm --filter @datasentinel/db migrate:dev`)
+- [x] Add a seed command that creates only fake development accounts/data. (D-27)
 - [ ] Implement sign-in and sign-out with secure session handling.
 - [ ] Implement `/auth/me` and the workspace list.
 - [ ] Implement workspace creation and initial owner membership in one transaction.

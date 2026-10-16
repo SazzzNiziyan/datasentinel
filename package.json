@@ -6,6 +6,7 @@
     "node": ">=26 <27"
   },
   "scripts": {
+    "postinstall": "pnpm --filter @datasentinel/db generate",
     "typecheck": "tsc -b",
     "dev:web": "pnpm --filter @datasentinel/web dev",
     "services:up": "docker compose up -d --wait && docker compose run --rm storage-setup",

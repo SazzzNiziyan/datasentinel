@@ -10,7 +10,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['**/dist/', '**/coverage/', '**/node_modules/']),
+  globalIgnores(['**/dist/', '**/coverage/', '**/node_modules/', 'packages/db/src/generated/']),
 
   // Every TypeScript file: type-aware rules through the TS project service,
   // which uses the nearest tsconfig.json and the repo's own TypeScript.

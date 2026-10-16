@@ -1,16 +1,5 @@
 {
-  // Built package (D-26). No @datasentinel/source condition: Prisma's
-  // generated client is not erasable TypeScript, so consumers use dist.
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "rootDir": "src",
-    "outDir": "dist",
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "types": ["node"]
-  },
-  "include": ["src"]
+  // Solution file: the library (src -> dist) and the Prisma CLI config.
+  "files": [],
+  "references": [{ "path": "./tsconfig.lib.json" }, { "path": "./tsconfig.config.json" }]
 }

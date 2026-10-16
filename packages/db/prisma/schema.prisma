@@ -1,0 +1,122 @@
+// Identity and workspace tables (docs/03-data-model.md §2, D-26).
+// UUIDv7 keys, UTC timestamps (timestamptz), snake_case table names.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum IdentityProvider {
+  google
+  github
+}
+
+/// D-02 roles, highest first.
+enum Role {
+  owner
+  admin
+  engineer
+  analyst
+  viewer
+}
+
+enum MembershipStatus {
+  active
+  removed
+}
+
+model User {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  /// Stored lowercase (checked by the database); unique case-insensitively.
+  email        String     @unique
+  displayName  String     @map("display_name")
+  /// Null for accounts that only sign in through Google or GitHub.
+  passwordHash String?    @map("password_hash")
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  identities  ExternalIdentity[]
+  sessions    Session[]
+  memberships Membership[]
+
+  @@map("users")
+}
+
+/// A Google or GitHub sign-in linked to a user (D-01, D-09).
+model ExternalIdentity {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  provider  IdentityProvider
+  /// The provider's stable user ID, never the email.
+  subject   String
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("external_identities")
+}
+
+/// Only a hash of the session token is stored (docs/05).
+model Session {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastUsedAt DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  /// Safe device summary, e.g. "Firefox on Windows"; never raw headers.
+  device     String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Workspace {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String
+  slug      String   @unique
+  /// IANA time zone for schedule display; stored times stay UTC.
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships Membership[]
+
+  @@map("workspaces")
+}
+
+model Membership {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  workspaceId String           @map("workspace_id") @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  role        Role
+  status      MembershipStatus @default(active)
+  invitedAt   DateTime?        @map("invited_at") @db.Timestamptz(3)
+  acceptedAt  DateTime?        @map("accepted_at") @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
