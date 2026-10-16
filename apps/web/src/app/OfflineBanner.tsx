@@ -16,7 +16,12 @@ export function OfflineBanner() {
   }
 
   return (
-    <div className="offline-banner" role="status" data-active={!online || undefined}>
+    <div
+      className="shell-banner"
+      role="status"
+      data-active={!online || undefined}
+      data-tone="warning"
+    >
       {!online && (
         <>
           <StatusMark tone="warning" label="You're offline." />

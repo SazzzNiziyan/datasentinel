@@ -2,6 +2,15 @@
 
 This roadmap builds the full product in dependency order. Each checkbox is intended to be one short Claude Code task. Keep the full product scope; finish one small item, understand it, and then move to the next.
 
+## Current status (handoff)
+
+Keep this section current after every item so another agent can continue.
+
+- **Last updated:** 2026-10-17. **Done:** 29 of 147 items. **Now:** Phase D complete (gate met: `pnpm services:up/down/reset`, `/health/ready` names each dependency); next is Phase E.
+- **Uncommitted work:** the user commits; check `git status` before starting. Everything since D-20 may be uncommitted.
+- **Next item:** the first unchecked box below. Decisions D-01 to D-21 are in `docs/09-decision-log.md`; D-04 to D-08 are still open, so stop and ask before work that needs them (hosting, production storage/secrets, email, LLM, limits/retention).
+- **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells); `pnpm check` is the gate; `pnpm services:up` needs Docker Desktop running.
+
 ## 1. Claude Code plugin setup
 
 Install these existing marketplace plugins in Claude Code:
@@ -71,15 +80,15 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 ## 5. Phase D — Local services and backend skeleton
 
-- [ ] Add local PostgreSQL to the development container setup.
-- [ ] Add local Redis to the same setup.
-- [ ] Add local MinIO or another S3-compatible storage service for development.
-- [ ] Add a health endpoint to the NestJS API.
+- [x] Add local PostgreSQL to the development container setup. (D-21; `compose.yaml`)
+- [x] Add local Redis to the same setup. (D-21)
+- [x] Add local MinIO or another S3-compatible storage service for development. (D-21; SeaweedFS)
+- [x] Add a health endpoint to the NestJS API. (D-22; `/health/live`, `/health/ready`)
   - Nest scaffold notes (D-13), same for the worker: `tsconfig.build.json` extending `tsconfig.json` with `noEmit: false`, `rootDir: src`, `outDir: dist` and its own `tsBuildInfoFile`; `nest-cli.json` with `tsConfigPath: tsconfig.build.json`; `build` script builds contracts first (`tsc -b ../../packages/contracts && nest build`); `--conditions=@datasentinel/source` in dev scripts only, never in production start commands; start scripts set `NODE_ENV` and load the root `.env` with `node --env-file` (NODE_ENV must never live in `.env`: Vite would ship development React); do not add `typescript` or `@types/node` to the app (they would shadow the root versions); add an e2e test that boots the module so an `import type` on an injected class is caught.
-- [ ] Add API request IDs and structured logging with secret redaction.
-- [ ] Add a separate NestJS worker entry point.
-- [ ] Add BullMQ connection and one harmless sample job for local wiring.
-- [ ] Add a basic web-to-API health check with a clear disconnected state.
+- [x] Add API request IDs and structured logging with secret redaction. (D-23)
+- [x] Add a separate NestJS worker entry point. (D-24)
+- [x] Add BullMQ connection and one harmless sample job for local wiring. (D-24; `sample-job` script)
+- [x] Add a basic web-to-API health check with a clear disconnected state. (D-25)
 
 **Phase gate:** local services start and stop predictably; health checks identify each dependency.
 

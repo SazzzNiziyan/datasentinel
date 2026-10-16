@@ -1,0 +1,12 @@
+{
+  // Compiles src and tests to plain JS for `node --test`. Node's type
+  // stripping cannot run decorators, and Nest needs their metadata.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": ".",
+    "outDir": "dist/test-build",
+    "tsBuildInfoFile": "dist/test-build/tsconfig.test.tsbuildinfo"
+  },
+  "include": ["src", "test"]
+}

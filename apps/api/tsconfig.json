@@ -1,8 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Type-check only. The NestJS build config (tsconfig.build.json,
-    // rootDir src, outDir dist) is added with the Nest scaffold.
+    // Type-check only; tsconfig.build.json emits dist for `nest build`.
     "noEmit": true,
     // incremental makes `tsc -b` trust the buildinfo; otherwise a noEmit
     // project looks for .js output and rebuilds on every run. Known TS 6
@@ -21,6 +20,6 @@
     // assigned by the framework, not in a constructor.
     "strictPropertyInitialization": false
   },
-  "include": ["src"],
+  "include": ["src", "test"],
   "references": [{ "path": "../../packages/config" }, { "path": "../../packages/contracts" }]
 }

@@ -1,0 +1,12 @@
+{
+  // Emitting build for `nest build` (D-13). Type-checking of src and tests
+  // happens through tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+  },
+  "include": ["src"]
+}

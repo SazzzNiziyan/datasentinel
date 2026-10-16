@@ -4,3 +4,8 @@ packages:
 
 # pnpm 11+ ignores engine-strict in .npmrc; it must be set here.
 engineStrict: true
+
+# Install scripts run only for packages listed as true. msgpackr-extract is
+# an optional native speed-up for BullMQ; without it BullMQ uses plain JS.
+allowBuilds:
+  msgpackr-extract: false

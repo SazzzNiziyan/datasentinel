@@ -8,6 +8,9 @@
   "scripts": {
     "typecheck": "tsc -b",
     "dev:web": "pnpm --filter @datasentinel/web dev",
+    "services:up": "docker compose up -d --wait && docker compose run --rm storage-setup",
+    "services:down": "docker compose down",
+    "services:reset": "docker compose down --volumes",
     "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

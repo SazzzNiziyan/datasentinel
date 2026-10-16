@@ -1,0 +1,89 @@
+# Local development services only. Never use these settings or credentials
+# outside a developer machine. Start: `pnpm services:up`, stop:
+# `pnpm services:down`, wipe all local data: `pnpm services:reset`.
+#
+# Ports bind to 127.0.0.1 so nothing is reachable from the network.
+# Credentials match .env.example; Compose reads the root .env for ${...}.
+name: datasentinel
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: datasentinel
+      POSTGRES_PASSWORD: datasentinel-local
+      POSTGRES_DB: datasentinel
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U datasentinel -d datasentinel']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    # Append-only file so queued jobs survive a container restart.
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3-compatible storage for uploads (D-21). SeaweedFS, because MinIO no
+  # longer publishes free container images. The S3 API listens on 8333 in
+  # the container and is published as 9000, matching S3_ENDPOINT.
+  storage:
+    image: chrislusf/seaweedfs:4.48
+    environment:
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+    # Writes the one S3 identity from .env, then runs master, volume, filer,
+    # and S3 gateway in a single process.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        printf '{"identities":[{"name":"local","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}'
+        "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" > /tmp/s3.json &&
+        exec weed server -dir=/data -ip=storage -s3 -s3.port=8333 -s3.config=/tmp/s3.json
+    ports:
+      - '127.0.0.1:9000:8333'
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 8333']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Creates the private uploads bucket, then exits. Run by `pnpm
+  # services:up` after the others are healthy; the profile keeps a plain
+  # `docker compose up --wait` from treating its exit as a failure.
+  storage-setup:
+    image: chrislusf/seaweedfs:4.48
+    profiles: ['setup']
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      S3_BUCKET_UPLOADS: ${S3_BUCKET_UPLOADS:?set S3_BUCKET_UPLOADS in .env}
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        echo "s3.bucket.create -name $$S3_BUCKET_UPLOADS" | weed shell -master=storage:9333 > /tmp/out 2>&1;
+        cat /tmp/out; grep -Eq "created bucket|already exists" /tmp/out
+    restart: 'no'
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:

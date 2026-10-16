@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { AccountMenu } from './AccountMenu.tsx';
 import { BrandMark } from './BrandMark.tsx';
 import { NavList } from './NavList.tsx';
+import { ApiStatusBanner } from './ApiStatusBanner.tsx';
 import { OfflineBanner } from './OfflineBanner.tsx';
 import { RouteErrorBoundary } from './RouteErrorBoundary.tsx';
 import { sampleSession } from './sampleSession.ts';
@@ -102,6 +103,7 @@ export function AppShell() {
 
       <div className="shell__main" id="content" tabIndex={-1}>
         <OfflineBanner />
+        <ApiStatusBanner />
         <RouteErrorBoundary>
           <Outlet />
         </RouteErrorBoundary>

@@ -292,9 +292,10 @@
   outline: none;
 }
 
-/* --- Offline banner: empty and invisible until the browser goes offline.
- * Yellow is the warning signal; it stays in view while the page scrolls. */
-.offline-banner[data-active] {
+/* --- Status banners (offline, API): empty and invisible until needed.
+ * Yellow is the warning signal; an unreachable API is critical: white strip
+ * with the red edge used by error states. They stay in view while scrolling. */
+.shell-banner[data-active] {
   position: sticky;
   top: 0;
   z-index: 4;
@@ -307,6 +308,12 @@
   background: var(--color-status-warning);
   border-bottom: var(--border-width) solid var(--color-border-strong);
   font-size: var(--text-compact);
+}
+
+.shell-banner[data-active][data-tone='critical'] {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-left: var(--space-1) solid var(--color-status-critical);
 }
 
 /* --- Tablet and mobile: navigation moves into the drawer --------------- */
@@ -334,7 +341,7 @@
   }
 
   /* The bar is sticky here, so the banner sticks just below it. */
-  .offline-banner[data-active] {
+  .shell-banner[data-active] {
     top: var(--topbar-height);
     padding-inline: var(--space-4);
   }
@@ -343,7 +350,7 @@
 /* On short screens (landscape phones, high zoom) two sticky bars would
  * cover most of the page, so the banner scrolls away instead. */
 @media (max-height: 30rem) {
-  .offline-banner[data-active] {
+  .shell-banner[data-active] {
     position: static;
   }
 }
