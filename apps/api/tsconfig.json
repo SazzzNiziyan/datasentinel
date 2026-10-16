@@ -22,5 +22,5 @@
     "strictPropertyInitialization": false
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/contracts" }]
+  "references": [{ "path": "../../packages/config" }, { "path": "../../packages/contracts" }]
 }

@@ -20,13 +20,13 @@ DataSentinel aims to:
 
 ## 3. Users and permissions
 
-| Role | Main responsibilities | Typical access |
-|---|---|---|
-| Workspace owner | Owns the workspace and controls administration | All workspace settings and membership; can transfer ownership |
-| Administrator | Manages people, sources, integrations, and security settings | Workspace configuration and operational records |
-| Data engineer | Connects sources, defines datasets and rules, investigates incidents | Create/edit sources, datasets, rules, schedules, and recovery proposals |
-| Analyst | Checks data health and reviews incident evidence | Read sources/datasets/checks; comment on and acknowledge incidents (D-03) |
-| Viewer | Reads dashboards and reports | Read-only workspace access |
+| Role            | Main responsibilities                                                | Typical access                                                            |
+| --------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Workspace owner | Owns the workspace and controls administration                       | All workspace settings and membership; can transfer ownership             |
+| Administrator   | Manages people, sources, integrations, and security settings         | Workspace configuration and operational records                           |
+| Data engineer   | Connects sources, defines datasets and rules, investigates incidents | Create/edit sources, datasets, rules, schedules, and recovery proposals   |
+| Analyst         | Checks data health and reviews incident evidence                     | Read sources/datasets/checks; comment on and acknowledge incidents (D-03) |
+| Viewer          | Reads dashboards and reports                                         | Read-only workspace access                                                |
 
 Permissions are enforced by the API for every request and every background action. Hiding a button in the web interface is not authorization.
 
@@ -186,15 +186,15 @@ The system shall report API, worker, queue, connector, and notification health t
 
 ## 7. Core states
 
-| Record | States |
-|---|---|
-| Source | `pending`, `healthy`, `degraded`, `failed`, `paused`, `archived` |
-| Check run | `queued`, `running`, `passed`, `failed`, `warning`, `skipped`, `error`, `timed_out`, `cancelled` |
-| Pipeline run | `queued`, `running`, `succeeded`, `failed`, `timed_out`, `cancelled`, `unknown` |
-| Incident | `open`, `acknowledged`, `investigating`, `resolved`, `reopened` |
-| Notification delivery | `pending`, `sent`, `retrying`, `failed`, `suppressed` |
-| Recovery action | `proposed`, `approved`, `rejected`, `running`, `succeeded`, `failed`, `cancelled`, `expired` |
-| AI report | `not_requested`, `queued`, `ready`, `failed`, `stale` |
+| Record                | States                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| Source                | `pending`, `healthy`, `degraded`, `failed`, `paused`, `archived`                                 |
+| Check run             | `queued`, `running`, `passed`, `failed`, `warning`, `skipped`, `error`, `timed_out`, `cancelled` |
+| Pipeline run          | `queued`, `running`, `succeeded`, `failed`, `timed_out`, `cancelled`, `unknown`                  |
+| Incident              | `open`, `acknowledged`, `investigating`, `resolved`, `reopened`                                  |
+| Notification delivery | `pending`, `sent`, `retrying`, `failed`, `suppressed`                                            |
+| Recovery action       | `proposed`, `approved`, `rejected`, `running`, `succeeded`, `failed`, `cancelled`, `expired`     |
+| AI report             | `not_requested`, `queued`, `ready`, `failed`, `stale`                                            |
 
 State transitions are validated in the API; the browser cannot set arbitrary state values.
 
@@ -211,19 +211,18 @@ State transitions are validated in the API; the browser cannot set arbitrary sta
 
 Requirements above that are ambiguous or underspecified. Each must be answered (and moved to the decision log) before the roadmap phase in the last column starts. Do not guess an answer in code.
 
-| # | Where | Question | Why it matters | Needed by |
-|---|---|---|---|---|
-| Q-01 | §4.1, D-01 | **Resolved: D-09.** If a password account and a Google/GitHub sign-in share the same email, are they linked automatically (verified provider email only), linked only from a signed-in session, or kept separate? | Automatic linking on an unverified email allows account takeover. | Phase E |
-| Q-02 | §4.5, FR-05, FR-09 | What severity levels exist, and which create an incident? Does a `warning` check result open an incident or only show on the dashboard? | "Severity policy" is used but never defined. | Phase H |
-| Q-03 | §4.5 | When a failure recurs after its incident was resolved, is the incident reopened or is a new one created? What is the default incident window? | Determines the dedupe key and incident history behavior. | Phase J |
-| Q-04 | FR-08, §7 | `insufficient_data` is not a check-run state. Should it be added as a state, or recorded as `skipped` with a reason code? | The state list and acceptance criterion disagree. | Phase H |
-| Q-05 | FR-08 | What is the default baseline: rolling mean or median of the last N runs, or a same-weekday comparison? What is the minimum history? | "Transparent baseline" needs one documented formula. | Phase H |
-| Q-06 | FR-03, §4.2 | **Resolved: D-10.** How does a new CSV upload attach to an existing dataset (user selects it, filename match, or one dataset per CSV source)? Is CSV freshness the upload time or a timestamp column? | Stable dataset identity and freshness rules depend on it. | Phase F |
-| Q-07 | §4.2 | What does an HTTP/API check measure (status code, latency, a JSON field value, a count)? Who approves a host for the allowlist? | "Approved HTTP/API checks" has no defined checks or approver. | Phase G/H |
-| Q-08 | §4.2 | **Resolved: D-11.** Is hard delete of a source ever allowed? If so, by which role, and what happens to its incidents, evidence, and audit records? | Delete versus archive affects retention and audit integrity. | Phase F |
-| Q-09 | FR-14, §3 | "Operator" is not a workspace role. Is it DataSentinel platform staff (cross-workspace) or a view for workspace Administrators? | A cross-workspace role is a tenancy boundary exception. | Phase I |
-| Q-10 | §4.5, FR-11 | Who is "the right recipient": the dataset owner, per-rule subscribers, or a workspace-wide channel? | Notification routing model and data shape. | Phase K |
-| Q-11 | FR-12, §4.7 | Which roles may approve an action? Is self-approval blocked by default? How long does an approval stay valid before `expired`? | Approval policy defaults. | Phase M |
-| Q-12 | §7 | What makes a source `degraded` rather than `failed`? What makes an AI report `stale` (new evidence, rule change, time)? | State transitions must be validated in the API. | Phase G/L |
-| Q-13 | §4.4 | Which DataSentinel-managed demo/import/validation jobs are retryable? | Defines the full set of retryable actions. | Phase M |
-
+| #    | Where              | Question                                                                                                                                                                                                          | Why it matters                                                    | Needed by |
+| ---- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------- |
+| Q-01 | §4.1, D-01         | **Resolved: D-09.** If a password account and a Google/GitHub sign-in share the same email, are they linked automatically (verified provider email only), linked only from a signed-in session, or kept separate? | Automatic linking on an unverified email allows account takeover. | Phase E   |
+| Q-02 | §4.5, FR-05, FR-09 | What severity levels exist, and which create an incident? Does a `warning` check result open an incident or only show on the dashboard?                                                                           | "Severity policy" is used but never defined.                      | Phase H   |
+| Q-03 | §4.5               | When a failure recurs after its incident was resolved, is the incident reopened or is a new one created? What is the default incident window?                                                                     | Determines the dedupe key and incident history behavior.          | Phase J   |
+| Q-04 | FR-08, §7          | `insufficient_data` is not a check-run state. Should it be added as a state, or recorded as `skipped` with a reason code?                                                                                         | The state list and acceptance criterion disagree.                 | Phase H   |
+| Q-05 | FR-08              | What is the default baseline: rolling mean or median of the last N runs, or a same-weekday comparison? What is the minimum history?                                                                               | "Transparent baseline" needs one documented formula.              | Phase H   |
+| Q-06 | FR-03, §4.2        | **Resolved: D-10.** How does a new CSV upload attach to an existing dataset (user selects it, filename match, or one dataset per CSV source)? Is CSV freshness the upload time or a timestamp column?             | Stable dataset identity and freshness rules depend on it.         | Phase F   |
+| Q-07 | §4.2               | What does an HTTP/API check measure (status code, latency, a JSON field value, a count)? Who approves a host for the allowlist?                                                                                   | "Approved HTTP/API checks" has no defined checks or approver.     | Phase G/H |
+| Q-08 | §4.2               | **Resolved: D-11.** Is hard delete of a source ever allowed? If so, by which role, and what happens to its incidents, evidence, and audit records?                                                                | Delete versus archive affects retention and audit integrity.      | Phase F   |
+| Q-09 | FR-14, §3          | "Operator" is not a workspace role. Is it DataSentinel platform staff (cross-workspace) or a view for workspace Administrators?                                                                                   | A cross-workspace role is a tenancy boundary exception.           | Phase I   |
+| Q-10 | §4.5, FR-11        | Who is "the right recipient": the dataset owner, per-rule subscribers, or a workspace-wide channel?                                                                                                               | Notification routing model and data shape.                        | Phase K   |
+| Q-11 | FR-12, §4.7        | Which roles may approve an action? Is self-approval blocked by default? How long does an approval stay valid before `expired`?                                                                                    | Approval policy defaults.                                         | Phase M   |
+| Q-12 | §7                 | What makes a source `degraded` rather than `failed`? What makes an AI report `stale` (new evidence, rule change, time)?                                                                                           | State transitions must be validated in the API.                   | Phase G/L |
+| Q-13 | §4.4               | Which DataSentinel-managed demo/import/validation jobs are retryable?                                                                                                                                             | Defines the full set of retryable actions.                        | Phase M   |

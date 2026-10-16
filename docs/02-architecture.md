@@ -154,12 +154,11 @@ Keep dev/staging/production resources separate. Production source egress should 
 
 ## 9. Architectural decisions to revisit later
 
-| Decision | Current direction | Revisit when |
-|---|---|---|
-| Service architecture | Modular monolith, API and worker as separate processes | Scaling/team ownership justifies service boundaries |
-| Database | PostgreSQL + Prisma | Measured capacity or specialized analytics needs require another store |
-| Queue | Redis + BullMQ | Queue durability/scale requirements outgrow the chosen deployment |
-| Historical anomaly detection | Transparent thresholds and rolling baselines | There is enough trustworthy history and a validated need for more advanced models |
-| Document retrieval | PostgreSQL full text plus optional pgvector | Corpus size/latency requires a dedicated retrieval service |
-| Hosting provider | Not selected | Region, budget, compliance, and operational support are known |
-
+| Decision                     | Current direction                                      | Revisit when                                                                      |
+| ---------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Service architecture         | Modular monolith, API and worker as separate processes | Scaling/team ownership justifies service boundaries                               |
+| Database                     | PostgreSQL + Prisma                                    | Measured capacity or specialized analytics needs require another store            |
+| Queue                        | Redis + BullMQ                                         | Queue durability/scale requirements outgrow the chosen deployment                 |
+| Historical anomaly detection | Transparent thresholds and rolling baselines           | There is enough trustworthy history and a validated need for more advanced models |
+| Document retrieval           | PostgreSQL full text plus optional pgvector            | Corpus size/latency requires a dedicated retrieval service                        |
+| Hosting provider             | Not selected                                           | Region, budget, compliance, and operational support are known                     |

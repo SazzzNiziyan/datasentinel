@@ -18,16 +18,16 @@ DataSentinel is an operational tool. A user should see what is healthy, what nee
 
 Treat these as initial design tokens; verify contrast in the implemented components before release.
 
-| Token | Suggested value | Use |
-|---|---|---|
-| `ink` | `#171717` | Primary text, borders, icons |
-| `paper` | `#F4F1E8` | Main page background |
-| `surface` | `#FFFFFF` | Cards, forms, tables |
-| `signal-red` | `#C83225` | Critical failure accents and severity marks; pair with text/icon |
-| `signal-blue` | `#24528A` | Navigation/selected state and informational emphasis |
-| `signal-yellow` | `#F0C64A` | Warning/highlight surface; use dark text on it |
-| `line` | `#B8B4AA` | Dividers and table rules |
-| `success` | `#236B4A` | Healthy/pass status with label/icon |
+| Token           | Suggested value | Use                                                              |
+| --------------- | --------------- | ---------------------------------------------------------------- |
+| `ink`           | `#171717`       | Primary text, borders, icons                                     |
+| `paper`         | `#F4F1E8`       | Main page background                                             |
+| `surface`       | `#FFFFFF`       | Cards, forms, tables                                             |
+| `signal-red`    | `#C83225`       | Critical failure accents and severity marks; pair with text/icon |
+| `signal-blue`   | `#24528A`       | Navigation/selected state and informational emphasis             |
+| `signal-yellow` | `#F0C64A`       | Warning/highlight surface; use dark text on it                   |
+| `line`          | `#B8B4AA`       | Dividers and table rules                                         |
+| `success`       | `#236B4A`       | Healthy/pass status with label/icon                              |
 
 Use color tokens as small, consistent areas rather than making every panel brightly colored. Confirm text and control contrast against WCAG AA targets. Do not encode status by color alone.
 
@@ -144,4 +144,3 @@ Show current workspace clearly. Provide a visible user menu and role context. Ad
 - [ ] Keyboard focus and contrast are visible and usable.
 - [ ] Charts show units, dates, baselines, and gaps.
 - [ ] No fake/placeholder metrics appear as live production data.
-

@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "lint": "eslint ."
   },
   "dependencies": {
+    "@datasentinel/config": "workspace:*",
     "@datasentinel/contracts": "workspace:*"
   }
 }

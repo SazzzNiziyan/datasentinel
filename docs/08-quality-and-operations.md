@@ -18,16 +18,16 @@ A feature is done when all items that apply are true:
 
 Build confidence at several layers. Keep all test data synthetic unless a specifically authorized environment provides isolated test data.
 
-| Layer | What to verify |
-|---|---|
-| Unit | Rule evaluation, baseline math, incident grouping, state transitions, redaction, validation, idempotency-key behavior |
-| API/module | Workspace/role permissions, service transactions, DTO validation, safe error normalization, session lifecycle |
-| Connector | CSV parsing limits, PostgreSQL read-only query behavior, timeout handling, HTTP SSRF policy, credential redaction |
-| Worker/queue | Retry/backoff, duplicate delivery, job timeout, terminal failure, schedule uniqueness, outbox recovery |
-| UI | Main journeys, keyboard operation, form errors, responsive screens, queued/running/failed states, accessible status text |
-| End-to-end | Upload/register dataset → profile → create rule → trigger failure → incident/evidence → notification → resolution |
-| Security | Cross-workspace access, role escalation, CSRF/session controls, upload abuse, SSRF, secret leakage, approval bypass |
-| Operations | Backup restore, migration rollout, queue restart, database/Redis/object-store outage, provider outage, retention deletion |
+| Layer        | What to verify                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Unit         | Rule evaluation, baseline math, incident grouping, state transitions, redaction, validation, idempotency-key behavior     |
+| API/module   | Workspace/role permissions, service transactions, DTO validation, safe error normalization, session lifecycle             |
+| Connector    | CSV parsing limits, PostgreSQL read-only query behavior, timeout handling, HTTP SSRF policy, credential redaction         |
+| Worker/queue | Retry/backoff, duplicate delivery, job timeout, terminal failure, schedule uniqueness, outbox recovery                    |
+| UI           | Main journeys, keyboard operation, form errors, responsive screens, queued/running/failed states, accessible status text  |
+| End-to-end   | Upload/register dataset → profile → create rule → trigger failure → incident/evidence → notification → resolution         |
+| Security     | Cross-workspace access, role escalation, CSRF/session controls, upload abuse, SSRF, secret leakage, approval bypass       |
+| Operations   | Backup restore, migration rollout, queue restart, database/Redis/object-store outage, provider outage, retention deletion |
 
 For each failure-path check, confirm the system reports an error rather than showing a false healthy/pass state.
 
@@ -179,4 +179,3 @@ These are deployment/product choices, not facts to guess in code:
 - [ ] Monitoring, operator alerts, and runbooks have named owners.
 - [ ] Production secrets and egress controls are configured for the selected host.
 - [ ] No unresolved critical security or reliability issue remains.
-

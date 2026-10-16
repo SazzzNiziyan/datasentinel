@@ -4,12 +4,12 @@ DataSentinel connects to business data and operational tools, so security bounda
 
 ## 1. Data classes
 
-| Class | Examples | Default handling |
-|---|---|---|
-| Credentials/secrets | Database passwords, API tokens, signing keys | Encrypt or keep in a secret manager; never send to browser, logs, analytics, or LLM |
-| Sensitive source data | Customer identifiers, financial or health values, raw rows | Avoid copying; process in place where possible; restrict access; redact before any model call |
-| Operational metadata | Dataset names, schemas, counts, check results | Workspace-scoped; disclose only to authorized members |
-| Public/configuration data | Non-sensitive UI preferences, rule labels | Workspace-scoped and audited where material |
+| Class                     | Examples                                                   | Default handling                                                                              |
+| ------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Credentials/secrets       | Database passwords, API tokens, signing keys               | Encrypt or keep in a secret manager; never send to browser, logs, analytics, or LLM           |
+| Sensitive source data     | Customer identifiers, financial or health values, raw rows | Avoid copying; process in place where possible; restrict access; redact before any model call |
+| Operational metadata      | Dataset names, schemas, counts, check results              | Workspace-scoped; disclose only to authorized members                                         |
+| Public/configuration data | Non-sensitive UI preferences, rule labels                  | Workspace-scoped and audited where material                                                   |
 
 ## 2. Authentication and authorization
 
@@ -100,4 +100,3 @@ DataSentinel connects to business data and operational tools, so security bounda
 - [ ] Approval and idempotency logic reviewed for race conditions and payload changes.
 - [ ] Backups, restore permissions, and retention/deletion behavior verified.
 - [ ] Production logs, alerts, and support tools contain no secrets or unapproved row data.
-

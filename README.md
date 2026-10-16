@@ -38,6 +38,7 @@ Prerequisites: Git, and a Node version manager that reads `.nvmrc` ([fnm](https:
    ```
 
    For Git Bash, add `eval "$(fnm env --use-on-cd --shell bash)"` to `~/.bashrc`.
+
 2. In the repository, install the pinned Node version and check it:
 
    ```powershell
@@ -82,18 +83,17 @@ flowchart LR
 
 ## Documentation map
 
-| Document | What it defines |
-|---|---|
-| [Product specification](docs/01-product-specification.md) | Users, product scope, functional requirements, states, acceptance criteria |
-| [Architecture](docs/02-architecture.md) | Services, boundaries, data flow, queues, integrations, and repository shape |
-| [Data model](docs/03-data-model.md) | Main entities, relationships, tenancy, retention, and invariants |
-| [API contract](docs/04-api-contract.md) | REST conventions, endpoint groups, authorization, and error behavior |
-| [Security and privacy](docs/05-security-and-privacy.md) | Threat boundaries, credentials, monitored data, AI, and audit controls |
-| [Bauhaus design system](docs/06-design-system.md) | Visual rules, components, screens, responsive behavior, and accessibility |
-| [Build roadmap](docs/07-build-roadmap.md) | Small, ordered implementation steps and how to work with Claude Code plugins |
+| Document                                                    | What it defines                                                               |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [Product specification](docs/01-product-specification.md)   | Users, product scope, functional requirements, states, acceptance criteria    |
+| [Architecture](docs/02-architecture.md)                     | Services, boundaries, data flow, queues, integrations, and repository shape   |
+| [Data model](docs/03-data-model.md)                         | Main entities, relationships, tenancy, retention, and invariants              |
+| [API contract](docs/04-api-contract.md)                     | REST conventions, endpoint groups, authorization, and error behavior          |
+| [Security and privacy](docs/05-security-and-privacy.md)     | Threat boundaries, credentials, monitored data, AI, and audit controls        |
+| [Bauhaus design system](docs/06-design-system.md)           | Visual rules, components, screens, responsive behavior, and accessibility     |
+| [Build roadmap](docs/07-build-roadmap.md)                   | Small, ordered implementation steps and how to work with Claude Code plugins  |
 | [Quality and operations](docs/08-quality-and-operations.md) | Definition of done, verification strategy, deployment, recovery, and runbooks |
 
 ## Important product boundary
 
 The first release may include approved retries and validation reruns, but only through explicit approval, permission checks, and an audit record. Direct updates or deletes to a monitored production source are outside DataSentinel's authority.
-

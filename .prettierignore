@@ -1,0 +1,2 @@
+# Prettier also honours .gitignore (dist, node_modules, .env, ...).
+pnpm-lock.yaml

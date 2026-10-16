@@ -6,11 +6,11 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Install these existing marketplace plugins in Claude Code:
 
-| Plugin | When to use it |
-|---|---|
-| [Learning Output Style](https://claude.com/marketplace/plugins/learning-output-style) | Keep it active while building. It explains decisions and may ask you to write small, meaningful pieces of code while Claude handles routine setup. |
-| [Feature Dev](https://claude.com/plugins/feature-dev) | Use `/feature-dev` for a bounded feature, especially API, database, worker, security, and end-to-end slices. State exactly which one small checkbox to implement. |
-| [Frontend Design](https://claude.com/marketplace/plugins/frontend-design) | Use while implementing the Bauhaus design system, pages, responsive layouts, and UI polish. It is a frontend aid, not the backend workflow. |
+| Plugin                                                                                | When to use it                                                                                                                                                    |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Learning Output Style](https://claude.com/marketplace/plugins/learning-output-style) | Keep it active while building. It explains decisions and may ask you to write small, meaningful pieces of code while Claude handles routine setup.                |
+| [Feature Dev](https://claude.com/plugins/feature-dev)                                 | Use `/feature-dev` for a bounded feature, especially API, database, worker, security, and end-to-end slices. State exactly which one small checkbox to implement. |
+| [Frontend Design](https://claude.com/marketplace/plugins/frontend-design)             | Use while implementing the Bauhaus design system, pages, responsive layouts, and UI polish. It is a frontend aid, not the backend workflow.                       |
 
 There is no need to install a backend plugin tied to a different stack such as Convex. Feature Dev can guide general backend features; Claude Code writes the Node/NestJS/PostgreSQL code. You can add a documentation lookup plugin later if current framework docs become a recurring problem, but it is not required to start.
 
@@ -44,13 +44,15 @@ When using `/feature-dev`, use it for the bounded task above. For a visual task,
 - [x] Initialize a pnpm workspace; add a monorepo tool only if it simplifies shared packages. (D-12: no monorepo tool yet)
 - [x] Create empty `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, and `prisma` folders.
 - [x] Add TypeScript configurations with strict type checking. (D-13; verified against real NestJS 12 and Vite 8 + React apps)
-- [ ] Add formatting/linting configuration and a root command for each app.
-  - Lint note (D-13): typescript-eslint `consistent-type-imports` must run with `emitDecoratorMetadata`/`experimentalDecorators` parser options so it never rewrites injected classes to `import type`.
+- [x] Add formatting/linting configuration and a root command for each app. (D-14)
+  - Lint note (D-14): DI safety comes from `experimentalDecorators` + `emitDecoratorMetadata` in each Nest tsconfig (typescript-eslint reads them and skips decorated files); parser options cannot replace them. Nothing detects a hand-written `import type` of an injected class, so the boot test stays required.
 - [x] Add `.env.example` with variable names and safe placeholders only.
-- [ ] Add configuration parsing that fails early when required values are missing or invalid.
+- [x] Add configuration parsing that fails early when required values are missing or invalid. (`packages/config`; called from each app entry point when the Nest scaffold lands)
 - [x] Add a short local setup section to the repository README. (extend as services and apps land)
 
 **Phase gate:** a clean checkout can install dependencies and start each scaffold with no real credentials committed.
+
+Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `pnpm check`; no credentials are committed. The apps are still placeholders, so "start" means each entry point runs; real start commands arrive with the Nest and Vite scaffolds. Use `pnpm clean` (root script) to remove build output; `pnpm -r clean` is pnpm's built-in that deletes every `node_modules`.
 
 ## 4. Phase C — Bauhaus UI foundation
 
@@ -255,4 +257,3 @@ For every checkbox:
 7. Review the diff and ask Claude to explain every changed file.
 8. Verify the visible behavior locally before checking off the item.
 9. Update this roadmap and continue only when you say “next.”
-
