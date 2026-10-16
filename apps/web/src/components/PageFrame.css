@@ -20,6 +20,35 @@
   max-width: 65ch;
 }
 
+/* Same outlined tag as the workspace bar: sample data never looks live. */
+.page__sample {
+  justify-self: start;
+  padding: 0 var(--space-2);
+  font-size: var(--text-helper);
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+/* A titled block inside the page grid. Spans set per screen. */
+.panel {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+.panel__title {
+  font-size: var(--text-heading);
+}
+
+@media (min-width: 64rem) {
+  .page__grid > .span-8 {
+    grid-column: span 8;
+  }
+
+  .page__grid > .span-4 {
+    grid-column: span 4;
+  }
+}
+
 .page__grid {
   display: grid;
   grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));

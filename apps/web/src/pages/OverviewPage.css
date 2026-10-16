@@ -1,0 +1,16 @@
+.overview-health {
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+/* The headline status, larger than table text. */
+.overview-health__status .status-mark {
+  font-size: var(--text-heading);
+}
+
+.overview-health__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--grid-gap);
+}
