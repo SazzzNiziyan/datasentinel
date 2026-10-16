@@ -1,0 +1,11 @@
+{
+  // Solution file: `pnpm typecheck` runs `tsc -b` here, which builds
+  // packages/contracts first and then checks every app against it.
+  "files": [],
+  "references": [
+    { "path": "./packages/contracts" },
+    { "path": "./apps/api" },
+    { "path": "./apps/worker" },
+    { "path": "./apps/web" }
+  ]
+}

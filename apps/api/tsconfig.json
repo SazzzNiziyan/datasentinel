@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Type-check only. The NestJS build config (tsconfig.build.json,
+    // rootDir src, outDir dist) is added with the Nest scaffold.
+    "noEmit": true,
+    // incremental makes `tsc -b` trust the buildinfo; otherwise a noEmit
+    // project looks for .js output and rebuilds on every run. Known TS 6
+    // quirk: after contracts is cleaned and rebuilt unchanged, an app may be
+    // re-checked on every run until its own sources change (speed only).
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.tsbuildinfo",
+    "types": ["node"],
+
+    // NestJS dependency injection reads constructor parameter types from
+    // decorator metadata. Never import an injected class with `import type`:
+    // its metadata becomes `Function` and injection fails at runtime.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // Matches the official Nest 12 template: DTO/entity class fields are
+    // assigned by the framework, not in a constructor.
+    "strictPropertyInitialization": false
+  },
+  "include": ["src"],
+  "references": [{ "path": "../../packages/contracts" }]
+}

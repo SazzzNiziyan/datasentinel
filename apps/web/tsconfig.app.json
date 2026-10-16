@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Vite bundles; tsc only type-checks.
+    "noEmit": true,
+    // incremental makes `tsc -b` trust the buildinfo; otherwise a noEmit
+    // project looks for .js output and rebuilds on every run. Known TS 6
+    // quirk: after contracts is cleaned and rebuilt unchanged, an app may be
+    // re-checked on every run until its own sources change (speed only).
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    // ES2023 APIs only: Vite lowers syntax but does not polyfill APIs, so
+    // newer ones (iterator helpers, Promise.try) may be missing in browsers.
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "erasableSyntaxOnly": true,
+    // Types for import.meta.env and asset/CSS imports. Without them,
+    // `import './x.css'` fails (noUncheckedSideEffectImports is on in TS 6+).
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "references": [{ "path": "../../packages/contracts" }]
+}

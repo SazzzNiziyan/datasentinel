@@ -1,0 +1,15 @@
+{
+  "name": "@datasentinel/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@datasentinel/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}

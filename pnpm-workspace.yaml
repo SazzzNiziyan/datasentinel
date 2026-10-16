@@ -1,0 +1,6 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11+ ignores engine-strict in .npmrc; it must be set here.
+engineStrict: true

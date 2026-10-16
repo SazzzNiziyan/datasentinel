@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Built and referenced by the apps (`tsc -b` builds this first).
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    // Kept inside dist so removing the whole folder (pnpm run clean) forces
+    // a rebuild; deleting single output files is not detected.
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "isolatedDeclarations": true,
+
+    // Only syntax Node 26 can run directly from source (no enums,
+    // namespaces, or parameter properties). Relative imports are written
+    // with .ts and rewritten to .js in dist.
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src"]
+}

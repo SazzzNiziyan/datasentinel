@@ -1,0 +1,6 @@
+{
+  // Solution file, as in the Vite react-ts template. A tsconfig.node.json
+  // for vite.config.ts is added alongside the Vite scaffold.
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }]
+}

@@ -27,6 +27,44 @@ This is the intended full product, delivered in small, reviewable slices. It is 
 4. Follow [the small-step build roadmap](docs/07-build-roadmap.md) one checkbox at a time.
 5. Use [the design system](docs/06-design-system.md) when implementing screens and [the operations guide](docs/08-quality-and-operations.md) before release.
 
+## Local setup
+
+Prerequisites: Git, and a Node version manager that reads `.nvmrc` ([fnm](https://github.com/Schniz/fnm) is used on Windows: `winget install Schniz.fnm`).
+
+1. Configure fnm to switch versions on `cd` by adding this line to your PowerShell profile (`$PROFILE`):
+
+   ```powershell
+   fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+   ```
+
+   For Git Bash, add `eval "$(fnm env --use-on-cd --shell bash)"` to `~/.bashrc`.
+2. In the repository, install the pinned Node version and check it:
+
+   ```powershell
+   fnm install
+   node -v   # v26.x
+   ```
+
+3. Install pnpm. Node 26 does not bundle Corepack, so install it with npm; the `packageManager` field then makes pnpm switch to the exact pinned version (see [D-12](docs/09-decision-log.md)):
+
+   ```powershell
+   npm install -g pnpm
+   ```
+
+4. Install workspace dependencies. A wrong Node version fails here on purpose (`engineStrict`):
+
+   ```powershell
+   pnpm install
+   ```
+
+5. Create your local environment file and fill in the empty secrets, following the comments in it:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+Backing services (PostgreSQL, Redis, MinIO), migrations, seed data, and app start commands are added to this section as the roadmap reaches them.
+
 ## The main workflow
 
 ```mermaid
