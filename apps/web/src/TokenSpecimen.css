@@ -1,0 +1,99 @@
+.specimen {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+  display: grid;
+  gap: var(--space-12);
+}
+.specimen__notice {
+  border: var(--border-width) solid var(--color-border-strong);
+  border-left: var(--space-2) solid var(--color-status-info);
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-compact);
+}
+.specimen section {
+  display: grid;
+  gap: var(--space-4);
+}
+.specimen__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-4);
+}
+.swatch {
+  border: var(--border-width) solid var(--color-divider);
+  background: var(--color-surface);
+}
+.swatch__color {
+  height: var(--space-16);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+.swatch__label {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-helper);
+}
+.specimen__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+.mark__shape {
+  width: var(--space-4);
+  height: var(--space-4);
+  flex: none;
+}
+.mark--healthy .mark__shape {
+  background: var(--color-status-healthy);
+  border-radius: var(--radius-mark);
+}
+.mark--critical .mark__shape {
+  background: var(--color-status-critical);
+}
+.mark--info .mark__shape {
+  background: var(--color-status-info);
+  transform: rotate(45deg) scale(0.8);
+}
+.mark--warning .mark__shape {
+  width: calc(var(--space-4) + 2px);
+  height: var(--space-4);
+}
+.specimen__type > * + * {
+  margin-top: var(--space-2);
+}
+.text-compact {
+  font-size: var(--text-compact);
+}
+.text-helper {
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}
+.field {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 24rem;
+}
+.field input {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border-control);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.specimen__spacing {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.space-bar {
+  background: var(--color-text);
+  width: var(--space-4);
+}

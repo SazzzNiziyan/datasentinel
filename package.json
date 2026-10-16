@@ -7,6 +7,8 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
+    "dev:web": "pnpm --filter @datasentinel/web dev",
+    "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",

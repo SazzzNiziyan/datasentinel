@@ -1,0 +1,14 @@
+.pending {
+  grid-column: 1 / span 6;
+  border: var(--border-width) solid var(--color-divider);
+  border-left: var(--space-1) solid var(--color-border-strong);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  font-size: var(--text-compact);
+}
+
+@media (max-width: 63.99rem) {
+  .pending {
+    grid-column: 1 / -1;
+  }
+}

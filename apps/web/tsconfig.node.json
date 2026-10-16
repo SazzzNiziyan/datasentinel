@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Type-checks the Node-side files: vite.config.ts and tests.
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts", "test"]
+}

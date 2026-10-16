@@ -1,0 +1,66 @@
+/* Global element defaults built only from tokens. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 100%; /* respect the user's browser font size */
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-strong);
+}
+
+h1 {
+  font-size: var(--text-display);
+}
+
+h2 {
+  font-size: var(--text-heading);
+}
+
+p {
+  margin: 0;
+}
+
+code,
+kbd,
+samp,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
+/* One visible focus style for every interactive element; keyboard only. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

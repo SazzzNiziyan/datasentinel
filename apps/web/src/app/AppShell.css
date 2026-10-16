@@ -1,0 +1,329 @@
+/* App shell: ink navigation rail, white workspace bar, paper content. */
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-areas:
+    'rail bar'
+    'rail main';
+}
+
+/* --- Skip link: hidden until keyboard focus --------------------------- */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: calc(-1 * var(--topbar-height));
+  z-index: 10;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border-strong);
+  padding: var(--space-2) var(--space-4);
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* --- Navigation rail --------------------------------------------------- */
+.shell__rail {
+  grid-area: rail;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--topbar-height);
+  padding: var(--space-4);
+  color: var(--color-nav-text);
+  text-decoration: none;
+  font-weight: var(--weight-strong);
+}
+
+.brand-mark {
+  width: 3.375rem;
+  height: 1rem;
+  fill: currentColor;
+  flex: none;
+}
+
+.nav-list {
+  padding: var(--space-4) 0;
+}
+
+.nav-list__group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Full-bleed rows: the current page is a solid blue block edge to edge. */
+.nav-list__link {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-nav-text);
+  text-decoration: none;
+}
+
+.nav-list__link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.nav-list__link[aria-current='page'] {
+  background: var(--color-selected);
+  color: var(--color-text-inverse);
+  font-weight: var(--weight-strong);
+}
+
+.nav-list__link:focus-visible,
+.brand:focus-visible {
+  outline-color: var(--color-focus-inverse);
+  outline-offset: calc(-1 * var(--focus-ring-width) - 2px);
+}
+
+.nav-list__divider {
+  border: 0;
+  border-top: var(--border-width) solid var(--color-nav-muted);
+  margin: var(--space-4);
+}
+
+/* --- Mobile and tablet drawer ----------------------------------------- */
+.shell__drawer {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: min(20rem, 85vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
+}
+
+.shell__drawer::backdrop {
+  background: rgb(23 23 23 / 0.5);
+}
+
+.shell__drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--space-4);
+}
+
+/* --- Workspace bar ----------------------------------------------------- */
+.shell__bar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-8);
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border-strong);
+}
+
+.workspace {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.workspace__name {
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sample-tag {
+  flex: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  padding: 0 var(--space-2);
+  font-size: var(--text-helper);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-compact);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-control);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.icon-button--inverse {
+  color: var(--color-nav-text);
+  background: transparent;
+  border-color: var(--color-nav-muted);
+}
+
+.icon-button--inverse:focus-visible {
+  outline-color: var(--color-focus-inverse);
+}
+
+.menu-button {
+  display: none;
+}
+
+.menu-button__mark {
+  width: var(--space-3);
+  height: var(--space-3);
+  background: var(--color-text);
+}
+
+/* --- Account button and menu ------------------------------------------ */
+.account-button {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  color: var(--color-text);
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+}
+
+.account-button:hover {
+  border-color: var(--color-border-control);
+}
+
+.account-button__initials {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
+  font-size: var(--text-helper);
+  font-weight: var(--weight-strong);
+}
+
+.account-button__text {
+  display: grid;
+  line-height: var(--leading-tight);
+}
+
+.account-button__name {
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.account-button__role {
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}
+
+.account-menu {
+  position: fixed;
+  inset: auto;
+  top: calc(var(--topbar-height) + var(--space-1));
+  right: var(--space-4);
+  margin: 0;
+  width: min(18rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius);
+  /* A solid offset block instead of a soft shadow. */
+  box-shadow: var(--space-1) var(--space-1) 0 var(--color-border-strong);
+}
+
+.account-menu__name {
+  font-weight: var(--weight-strong);
+}
+
+.account-menu__detail {
+  font-size: var(--text-compact);
+  color: var(--color-text-muted);
+}
+
+.account-menu__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-4) 0;
+  padding: var(--space-3) 0;
+  border-block: var(--border-width) solid var(--color-divider);
+  font-size: var(--text-compact);
+}
+
+.account-menu__facts dt {
+  color: var(--color-text-muted);
+}
+
+.account-menu__facts dd {
+  margin: 0;
+}
+
+.account-menu__note {
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}
+
+/* --- Content ----------------------------------------------------------- */
+.shell__main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.shell__main:focus {
+  outline: none;
+}
+
+/* --- Tablet and mobile: navigation moves into the drawer --------------- */
+@media (max-width: 63.99rem) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'bar'
+      'main';
+  }
+
+  .shell__rail {
+    display: none;
+  }
+
+  .menu-button {
+    display: inline-flex;
+  }
+
+  .shell__bar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 0 var(--space-4);
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .account-button__text,
+  .sample-tag {
+    display: none;
+  }
+
+  .shell__bar {
+    gap: var(--space-3);
+  }
+}

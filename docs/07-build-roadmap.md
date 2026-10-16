@@ -56,9 +56,9 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 ## 4. Phase C — Bauhaus UI foundation
 
-- [ ] Install Frontend Design and provide it `docs/06-design-system.md`.
-- [ ] Create design tokens for ink, paper, surfaces, signal colors, borders, typography, and spacing.
-- [ ] Build the global app shell: workspace header, left navigation, page frame, and account menu.
+- [x] Install Frontend Design and provide it `docs/06-design-system.md`. (plugin active; React + Vite scaffold added)
+- [x] Create design tokens for ink, paper, surfaces, signal colors, borders, typography, and spacing. (D-15; contrast enforced by tests)
+- [x] Build the global app shell: workspace header, left navigation, page frame, and account menu. (D-16; sample session in `apps/web/src/app/sampleSession.ts`)
   - Vite scaffold notes (D-13): `vite.config.ts` with `resolve.conditions: ['@datasentinel/source', ...defaultClientConditions]` and `envDir: '../..'`; `tsconfig.node.json` extending the base (`noEmit`, `incremental`, `types: ["node"]`, include `vite.config.ts`) referenced from `apps/web/tsconfig.json`; `src/vite-env.d.ts` typing each `VITE_*` variable with `strictImportMetaEnv`; scripts `dev`, `build` (`tsc -b && vite build`), `preview`.
 - [ ] Build reusable status, severity, metric, table, empty-state, and confirmation components.
 - [ ] Create responsive loading, error, empty, and permission-denied states.
@@ -74,7 +74,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [ ] Add local Redis to the same setup.
 - [ ] Add local MinIO or another S3-compatible storage service for development.
 - [ ] Add a health endpoint to the NestJS API.
-  - Nest scaffold notes (D-13), same for the worker: `tsconfig.build.json` extending `tsconfig.json` with `noEmit: false`, `rootDir: src`, `outDir: dist` and its own `tsBuildInfoFile`; `nest-cli.json` with `tsConfigPath: tsconfig.build.json`; `build` script builds contracts first (`tsc -b ../../packages/contracts && nest build`); `--conditions=@datasentinel/source` in dev scripts only, never in production start commands; do not add `typescript` or `@types/node` to the app (they would shadow the root versions); add an e2e test that boots the module so an `import type` on an injected class is caught.
+  - Nest scaffold notes (D-13), same for the worker: `tsconfig.build.json` extending `tsconfig.json` with `noEmit: false`, `rootDir: src`, `outDir: dist` and its own `tsBuildInfoFile`; `nest-cli.json` with `tsConfigPath: tsconfig.build.json`; `build` script builds contracts first (`tsc -b ../../packages/contracts && nest build`); `--conditions=@datasentinel/source` in dev scripts only, never in production start commands; start scripts set `NODE_ENV` and load the root `.env` with `node --env-file` (NODE_ENV must never live in `.env`: Vite would ship development React); do not add `typescript` or `@types/node` to the app (they would shadow the root versions); add an e2e test that boots the module so an `import type` on an injected class is caught.
 - [ ] Add API request IDs and structured logging with secret redaction.
 - [ ] Add a separate NestJS worker entry point.
 - [ ] Add BullMQ connection and one harmless sample job for local wiring.

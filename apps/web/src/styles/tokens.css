@@ -1,0 +1,98 @@
+/*
+ * DataSentinel design tokens (docs/06-design-system.md, D-15).
+ * Two layers: palette values, then semantic names. Components use only the
+ * semantic names, so a palette change never needs a component change.
+ * Contrast pairs are checked by apps/web/test/tokens.test.ts.
+ */
+:root {
+  /* --- Palette ---------------------------------------------------------- */
+  --palette-ink: #171717;
+  --palette-paper: #f4f1e8;
+  --palette-white: #ffffff;
+  --palette-red: #c83225;
+  --palette-blue: #24528a;
+  --palette-yellow: #f0c64a;
+  --palette-green: #236b4a;
+  --palette-line: #b8b4aa;
+  --palette-line-strong: #6b675e;
+
+  /* --- Semantic colors ------------------------------------------------ */
+  --color-text: var(--palette-ink);
+  --color-text-muted: var(--palette-line-strong);
+  --color-text-inverse: var(--palette-white);
+  --color-bg: var(--palette-paper);
+  --color-surface: var(--palette-white);
+  /* Decorative dividers and table rules only (below 3:1 by design). */
+  --color-divider: var(--palette-line);
+  /* Borders that identify a control (inputs, checkboxes): 3:1 or more. */
+  --color-border-control: var(--palette-line-strong);
+  --color-border-strong: var(--palette-ink);
+  --color-focus: var(--palette-blue);
+  /* Blue is 2.3:1 on ink, so dark areas (the navigation) use a paper ring. */
+  --color-focus-inverse: var(--palette-paper);
+  --color-selected: var(--palette-blue);
+
+  --color-status-critical: var(--palette-red);
+  --color-status-warning: var(--palette-yellow);
+  --color-status-healthy: var(--palette-green);
+  --color-status-info: var(--palette-blue);
+  /* Yellow alone is 1.4:1 on paper; every yellow shape gets an ink outline. */
+  --color-status-warning-outline: var(--palette-ink);
+  --color-on-warning: var(--palette-ink);
+
+  /* Navigation rail: the one solid ink area of the interface. */
+  --color-nav-bg: var(--palette-ink);
+  --color-nav-text: var(--palette-paper);
+  --color-nav-muted: var(--palette-line);
+
+  /* --- Type ----------------------------------------------------------- */
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  /* Five sizes only: display, heading, body, compact (tables), helper. */
+  --text-display: 2.5rem;
+  --text-heading: 1.5rem;
+  --text-body: 1rem;
+  --text-compact: 0.875rem;
+  --text-helper: 0.8125rem;
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-strong: 700;
+
+  /* --- Space: 8px base, 4px for fine adjustment ------------------------ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* --- Lines and shapes: functional 1px rules, square corners ----------- */
+  --border-width: 1px;
+  --mark-outline-width: 1.5px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --radius: 0;
+  --radius-mark: 50%;
+
+  /* --- Layout ---------------------------------------------------------- */
+  --grid-columns: 12;
+  --grid-gap: var(--space-6);
+  --nav-width: 15rem;
+  --content-max: 90rem;
+  --topbar-height: 3.5rem;
+
+  /* --- Motion: brief, and off for reduced-motion users ------------------ */
+  --duration-quick: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-quick: 0ms;
+  }
+}
