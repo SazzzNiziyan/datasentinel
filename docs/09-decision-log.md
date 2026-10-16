@@ -1,0 +1,17 @@
+# DataSentinel Decision Log
+
+Record each product, policy, and deployment decision here. A choice that has not been made is labeled **Open**; do not guess it in code.
+
+| # | Topic | Decision | Status | Date |
+|---|---|---|---|---|
+| D-01 | Sign-in method | Support both email/password and an external identity provider. Initial providers: Google and GitHub. | Decided | 2026-10-16 |
+| D-02 | Workspace roles | Owner, Administrator, Data engineer, Analyst, Viewer, as defined in the product specification §3. | Decided | 2026-10-16 |
+| D-03 | Analyst incident access | Analysts may comment on and acknowledge incidents. Other incident transitions (assign, investigate, resolve, reopen) stay with Data engineer and above. | Decided | 2026-10-16 |
+| D-04 | Deployment region and hosting provider | — | Open | |
+| D-05 | Production object storage and secret manager | — | Open | |
+| D-06 | Email provider; Slack/webhook at launch | — | Open | |
+| D-07 | LLM provider, model, region, retention, workspace opt-out | — | Open | |
+| D-08 | Upload limits, query timeouts, schedule minimums, retention defaults | — | Open | |
+| D-09 | Account linking (Q-01) | When an external sign-in (Google/GitHub) matches an existing account's email, link automatically only if the provider reports that email as verified (Google `email_verified`; GitHub verified primary email). If the existing account's own email was never verified, do not keep its password: remove it on linking and require a reset. Unverified provider emails never link. | Decided | 2026-10-16 |
+| D-10 | CSV dataset identity and freshness (Q-06) | On upload, the user explicitly selects an existing dataset or creates a new one; filenames are never used to match. An upload whose columns differ from the dataset's last schema is still attached, but runs schema-drift detection and shows the drift before profiling results are trusted. Freshness defaults to the upload time; a dataset may instead name a timestamp column, and freshness then uses its maximum value. | Decided | 2026-10-16 |
+| D-11 | Source deletion (Q-08) | Delete means archive by default: scheduled checks stop, the source becomes `archived`, and its history stays readable. Owner or Administrator may additionally purge an archived source: stored credentials and uploaded raw files are destroyed, while incidents, check results, evidence summaries, and audit records are kept. Purge requires typed confirmation, cannot be undone, and writes an audit entry. | Decided | 2026-10-16 |
