@@ -1,9 +1,12 @@
+import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { primaryNav, secondaryNav, type NavItem } from './navigation.ts';
 
 interface NavListProps {
   /** Called after a destination is chosen (closes the mobile drawer). */
   onNavigate?: () => void;
+  /** Shown first inside the landmark, e.g. the brand link in the rail. */
+  lead?: ReactNode;
 }
 
 function Items({ items, onNavigate }: { items: readonly NavItem[]; onNavigate?: () => void }) {
@@ -25,12 +28,15 @@ function Items({ items, onNavigate }: { items: readonly NavItem[]; onNavigate?: 
   );
 }
 
-export function NavList({ onNavigate }: NavListProps) {
+export function NavList({ onNavigate, lead }: NavListProps) {
   return (
     <nav className="nav-list" aria-label="Main">
-      <Items items={primaryNav} onNavigate={onNavigate} />
-      <hr className="nav-list__divider" />
-      <Items items={secondaryNav} onNavigate={onNavigate} />
+      {lead}
+      <div className="nav-list__body">
+        <Items items={primaryNav} onNavigate={onNavigate} />
+        <hr className="nav-list__divider" />
+        <Items items={secondaryNav} onNavigate={onNavigate} />
+      </div>
     </nav>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { AccountMenu } from './AccountMenu.tsx';
 import { BrandMark } from './BrandMark.tsx';
 import { NavList } from './NavList.tsx';
@@ -35,6 +35,20 @@ export function AppShell() {
     return () => desktop.removeEventListener('change', onChange);
   }, []);
 
+  // After navigation, move focus to the new page's heading so keyboard and
+  // screen-reader users start there (and hear the page name), instead of
+  // staying on the link or the drawer's Menu button. Not on first load.
+  // Compares paths rather than skipping the first run, because StrictMode
+  // runs effects twice on mount.
+  const { pathname } = useLocation();
+  const shownPath = useRef(pathname);
+  useEffect(() => {
+    if (shownPath.current === pathname) return;
+    shownPath.current = pathname;
+    const heading = document.querySelector<HTMLElement>('#content h1');
+    (heading ?? document.getElementById('content'))?.focus();
+  }, [pathname]);
+
   return (
     <div className="shell">
       <a className="skip-link" href="#content">
@@ -42,8 +56,8 @@ export function AppShell() {
       </a>
 
       <div className="shell__rail">
-        <Brand />
-        <NavList />
+        {/* Inside the nav landmark, so landmark navigation reaches it. */}
+        <NavList lead={<Brand />} />
       </div>
 
       <dialog

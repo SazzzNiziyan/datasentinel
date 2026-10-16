@@ -55,7 +55,7 @@
   flex: none;
 }
 
-.nav-list {
+.nav-list__body {
   padding: var(--space-4) 0;
 }
 

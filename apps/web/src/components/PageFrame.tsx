@@ -16,7 +16,10 @@ export function PageFrame({ title, summary, sample = false, children }: PageFram
     <main className="page">
       <title>{`${title} – DataSentinel`}</title>
       <header className="page__header">
-        <h1 className="page__title">{title}</h1>
+        {/* Focusable by script only: the shell moves focus here after navigation. */}
+        <h1 className="page__title" tabIndex={-1}>
+          {title}
+        </h1>
         {summary !== undefined && <p className="page__summary">{summary}</p>}
         {sample && <p className="page__sample">Sample data. Not connected to live services.</p>}
       </header>

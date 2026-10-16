@@ -40,7 +40,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="panel span-8" aria-label="Active incidents">
+      <div className="panel span-8">
         <DataTable
           caption="Active incidents"
           columns={incidentColumns}
@@ -53,7 +53,7 @@ export function OverviewPage() {
             />
           }
         />
-      </section>
+      </div>
 
       <section className="panel span-4" aria-labelledby="activity-title">
         <h2 id="activity-title" className="panel__title">
@@ -62,7 +62,7 @@ export function OverviewPage() {
         <Timeline label="Recent activity" events={activity} />
       </section>
 
-      <section className="panel" aria-label="Dataset freshness">
+      <div className="panel">
         <DataTable
           caption="Dataset freshness"
           columns={freshnessColumns}
@@ -75,7 +75,7 @@ export function OverviewPage() {
             />
           }
         />
-      </section>
+      </div>
     </PageFrame>
   );
 }
