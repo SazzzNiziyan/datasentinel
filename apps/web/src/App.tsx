@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AppShell } from './app/AppShell.tsx';
 import { primaryNav, secondaryNav } from './app/navigation.ts';
+import { LoadingState } from './components/LoadingState.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { PendingPage } from './pages/PendingPage.tsx';
 
@@ -26,7 +27,13 @@ export function App() {
             <Route
               path="/dev/components"
               element={
-                <Suspense>
+                <Suspense
+                  fallback={
+                    <div className="page">
+                      <LoadingState label="Loading preview" />
+                    </div>
+                  }
+                >
                   <ComponentGallery />
                 </Suspense>
               }
@@ -38,7 +45,13 @@ export function App() {
           <Route
             path="/dev/tokens"
             element={
-              <Suspense>
+              <Suspense
+                fallback={
+                  <div className="page">
+                    <LoadingState label="Loading preview" />
+                  </div>
+                }
+              >
                 <TokenSpecimen />
               </Suspense>
             }

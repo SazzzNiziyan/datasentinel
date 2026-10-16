@@ -1,0 +1,48 @@
+/* Solid frame with a red edge: the one state where red is earned. */
+.error-state {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  max-width: 36rem;
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-left: var(--space-1) solid var(--color-status-critical);
+}
+
+.error-state__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-heading);
+}
+
+.error-state__description {
+  max-width: 60ch;
+}
+
+.error-state__reference {
+  font-size: var(--text-compact);
+  color: var(--color-text-muted);
+}
+
+.error-state__reference code {
+  color: var(--color-text);
+}
+
+.error-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.error-state__status {
+  font-size: var(--text-compact);
+  color: var(--color-text-muted);
+}
+
+.error-state .button[aria-disabled='true'] {
+  cursor: progress;
+}

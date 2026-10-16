@@ -12,6 +12,12 @@
   gap: var(--space-6);
 }
 
+.gallery__states {
+  display: grid;
+  gap: var(--space-6);
+  justify-items: start;
+}
+
 /* Asymmetric spans on the 12-column grid: the failing metric leads. */
 .gallery__metrics {
   display: grid;

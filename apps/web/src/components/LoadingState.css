@@ -1,0 +1,45 @@
+.loading-state {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 36rem;
+  padding: var(--space-8) 0;
+}
+
+.loading-state__label {
+  color: var(--color-text-muted);
+}
+
+/* An ink block travelling along a line: indeterminate, so it never
+ * pretends to know how far along the load is. */
+.loading-state__track {
+  position: relative;
+  max-width: 16rem;
+  height: var(--space-1);
+  overflow: hidden;
+  background: var(--color-divider);
+}
+
+.loading-state__bar {
+  position: absolute;
+  inset-block: 0;
+  width: 33%;
+  background: var(--color-text);
+  animation: loading-state-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-state-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/* A frozen bar would look like real progress, so it is removed; the
+ * words carry the state. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-state__track {
+    display: none;
+  }
+}

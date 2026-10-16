@@ -1,0 +1,37 @@
+.permission-denied {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  max-width: 36rem;
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+.permission-denied__title {
+  font-size: var(--text-heading);
+}
+
+/* Same two-column facts layout as the account menu: label, then value. */
+.permission-denied__roles {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-block: var(--border-width) solid var(--color-divider);
+  justify-self: stretch;
+}
+
+.permission-denied__roles dt {
+  color: var(--color-text-muted);
+}
+
+.permission-denied__roles dd {
+  margin: 0;
+  font-weight: var(--weight-strong);
+}
+
+.permission-denied__action {
+  margin-top: var(--space-2);
+}

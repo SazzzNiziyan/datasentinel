@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { ConfirmActionDialog } from '../components/ConfirmActionDialog.tsx';
 import { DataTable, type Column } from '../components/DataTable.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
+import { ErrorState } from '../components/ErrorState.tsx';
+import { LoadingState } from '../components/LoadingState.tsx';
 import { MetricBlock } from '../components/MetricBlock.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
+import { PermissionDenied } from '../components/PermissionDenied.tsx';
 import { SeverityBadge } from '../components/SeverityBadge.tsx';
 import { StatusMark } from '../components/StatusMark.tsx';
 import './ComponentGallery.css';
@@ -43,6 +46,12 @@ const columns: Column<SampleDataset>[] = [
 
 export function ComponentGallery() {
   const [dialog, setDialog] = useState<'retry' | 'purge' | undefined>();
+  const [retrying, setRetrying] = useState(false);
+  // Sample retry: runs for a moment, then fails again.
+  const retry = () => {
+    setRetrying(true);
+    setTimeout(() => setRetrying(false), 1200);
+  };
 
   return (
     <PageFrame
@@ -118,6 +127,30 @@ export function ComponentGallery() {
             </button>
           }
         />
+      </section>
+
+      <section className="gallery__section">
+        <h2>Page states</h2>
+        <p>
+          Loading appears after 400ms. To see the offline banner, switch the browser to offline in
+          its developer tools.
+        </p>
+        <div className="gallery__states">
+          <LoadingState label="Loading incidents" />
+          <ErrorState
+            title="Could not load incidents"
+            description="The incident list did not load. Try again in a moment; if it keeps failing, share the reference with support."
+            onRetry={retry}
+            retrying={retrying}
+            reference="req_7f3a91c2"
+          />
+          <PermissionDenied
+            title="You can't change alert routing"
+            currentRole="Viewer"
+            requiredRole="Administrator or Owner"
+            contact="Ask a workspace administrator to change your role."
+          />
+        </div>
       </section>
 
       <section className="gallery__section">
