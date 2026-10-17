@@ -16,15 +16,58 @@
 }
 
 .add-source__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+}
+
+.add-source__kind,
+.add-source__field--wide,
+.add-source__help,
+.add-source__actions {
+  grid-column: 1 / -1;
+}
+
+.add-source__kind {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.add-source__kind legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.add-source__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+}
+
+.add-source__option input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-action-primary);
+}
+
+.add-source__actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
 .add-source__field {
   display: grid;
-  flex: 1 1 16rem;
   gap: var(--space-1);
   font-size: var(--text-compact);
   font-weight: var(--weight-strong);
@@ -35,6 +78,56 @@
 }
 
 .add-source__error {
+  display: grid;
+  gap: var(--space-1);
   padding-left: var(--space-3);
   border-left: var(--space-1) solid var(--color-status-critical);
+}
+
+.sources-filter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* A toggle that is on: selected blue edge and fill, plus aria-pressed. */
+.sources-filter .button[aria-pressed='true'] {
+  color: var(--color-text-inverse);
+  background: var(--color-selected);
+  border-color: var(--color-selected);
+}
+
+.source-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.test-connection {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  font-size: var(--text-compact);
+}
+
+td .test-connection .button {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-compact);
+}
+
+.test-connection__failed {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 40ch;
+}
+
+.test-connection__hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-helper);
+}
+
+td .source-actions__add {
+  justify-self: start;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-compact);
 }

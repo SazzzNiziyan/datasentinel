@@ -39,3 +39,6 @@ const RANK: Record<Role, number> = { viewer: 0, analyst: 1, engineer: 2, admin: 
 
 /** Data engineers and above change sources, datasets, and uploads (D-02). */
 export const canEdit = (role: Role): boolean => RANK[role] >= RANK.engineer;
+
+/** Administrators and owners archive sources and datasets (docs/04 §3). */
+export const canArchive = (role: Role): boolean => RANK[role] >= RANK.admin;

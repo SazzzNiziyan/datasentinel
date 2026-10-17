@@ -15,7 +15,9 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
 import { StatusMark, type Tone } from '../components/StatusMark.tsx';
 import { UploadCsvDialog } from '../uploads/UploadCsvDialog.tsx';
-import { canEdit, columnTypeLabel } from './labels.ts';
+import { canEdit, columnTypeLabel, lifecycleLabel } from './labels.ts';
+import { LifecycleActions } from './LifecycleActions.tsx';
+import { ProfileNow } from './ProfileNow.tsx';
 import './DatasetDetailPage.css';
 
 const when = new Intl.DateTimeFormat('en-GB', {
@@ -57,10 +59,12 @@ function profileColumns(rowCount: number): Column<ProfileColumn>[] {
       key: 'nulls',
       header: 'Empty values',
       cell: (c) =>
-        rowCount === 0
-          ? count(c.nullCount)
-          : `${count(c.nullCount)} (${Math.round((c.nullCount / rowCount) * 1000) / 10}%)`,
-      sortValue: (c) => c.nullCount,
+        c.nullCount === null
+          ? 'Not counted'
+          : rowCount === 0
+            ? count(c.nullCount)
+            : `${count(c.nullCount)} (${Math.round((c.nullCount / rowCount) * 1000) / 10}%)`,
+      sortValue: (c) => c.nullCount ?? -1,
       numeric: true,
     },
   ];
@@ -145,15 +149,40 @@ export function DatasetDetailPage() {
 
   return (
     <PageFrame title={d.name} summary={d.description ?? `A dataset in ${d.sourceName}.`}>
-      {workspace !== undefined && canEdit(workspace.role) && isCsv && (
+      {d.status === 'archived' && (
+        <p className="dataset-archived" role="status">
+          Archived {at(d.archivedAt)}. Its history stays readable; it no longer runs checks or
+          accepts uploads.
+        </p>
+      )}
+      {workspace !== undefined && canEdit(workspace.role) && d.status !== 'archived' && (
         <div className="page-actions">
-          <button
-            type="button"
-            className="button button--primary"
-            onClick={() => setUploading(true)}
-          >
-            Upload CSV
-          </button>
+          {!isCsv && (
+            <ProfileNow
+              workspaceId={workspace.workspaceId}
+              datasetId={d.id}
+              latestProfileId={profile?.id ?? null}
+              onProfiled={reload}
+            />
+          )}
+          {isCsv && (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => setUploading(true)}
+            >
+              Upload CSV
+            </button>
+          )}
+          <LifecycleActions
+            kind="dataset"
+            workspaceId={workspace.workspaceId}
+            id={d.id}
+            name={d.name}
+            status={d.status}
+            role={workspace.role}
+            onChanged={reload}
+          />
         </div>
       )}
 
@@ -161,7 +190,11 @@ export function DatasetDetailPage() {
         <dl className="dataset-summary">
           <div>
             <dt>Rows</dt>
-            <dd>{succeeded?.rowCount == null ? 'Not profiled' : count(succeeded.rowCount)}</dd>
+            <dd>
+              {succeeded?.rowCount == null
+                ? 'Not profiled'
+                : `${succeeded.rowCountMethod === 'approximate' ? 'About ' : ''}${count(succeeded.rowCount)}`}
+            </dd>
           </div>
           <div>
             <dt>Columns</dt>
@@ -174,6 +207,10 @@ export function DatasetDetailPage() {
           <div>
             <dt>Last profiled</dt>
             <dd>{at(profile?.observedAt ?? null)}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{lifecycleLabel[d.status]}</dd>
           </div>
           <div>
             <dt>Source</dt>

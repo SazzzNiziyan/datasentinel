@@ -1,0 +1,99 @@
+/* Same frame as the other dialogs: ink border and a hard offset shadow. */
+.register-dialog {
+  width: min(40rem, calc(100vw - 2 * var(--space-4)));
+  max-height: calc(100vh - 2 * var(--space-8));
+  padding: var(--space-6);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--space-2) var(--space-2) 0 var(--color-border-strong);
+}
+
+.register-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.register-dialog__title {
+  font-size: var(--text-heading);
+  margin-bottom: var(--space-6);
+}
+
+.register-dialog__form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.register-dialog__field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.register-dialog__field .text-input {
+  font-weight: var(--weight-regular);
+}
+
+/* A ruled, scrollable list: long schemas stay inside the dialog. */
+.register-dialog__tables {
+  max-height: 18rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+.register-dialog__tables legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.register-dialog__table {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.register-dialog__table:has(input:checked) {
+  background: var(--color-bg);
+  box-shadow: inset var(--space-1) 0 0 var(--color-selected);
+}
+
+.register-dialog__table input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-action-primary);
+}
+
+.register-dialog__meta,
+.register-dialog__help {
+  color: var(--color-text-muted);
+  font-size: var(--text-helper);
+}
+
+.register-dialog__help {
+  padding: var(--space-3);
+}
+
+.register-dialog__error {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-critical);
+  background: var(--color-bg);
+}
+
+.register-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}

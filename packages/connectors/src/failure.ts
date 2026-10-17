@@ -13,6 +13,7 @@ export const failureCodes = [
   'unsupported',
   'too_large',
   'malformed',
+  'busy',
   'internal',
 ] as const;
 
@@ -69,6 +70,11 @@ const text: Record<FailureCode, FailureText> = {
     message: 'The data could not be read.',
     hint: 'Check that the file is valid CSV with a header row and UTF-8 text.',
     retryable: false,
+  },
+  busy: {
+    message: 'DataSentinel is already running as many queries on this source as it allows.',
+    hint: 'Try again in a minute.',
+    retryable: true,
   },
   internal: {
     message: 'The check failed because of a problem on our side.',

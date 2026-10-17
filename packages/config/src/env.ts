@@ -40,6 +40,39 @@ const key = nonEmpty.transform((value, ctx) => {
   return decoded;
 });
 
+/** "version:key" pairs, comma-separated: keys that may still decrypt old
+ * secrets after rotation, never encrypt new ones. Never echoes a key. */
+const previousKeys = z
+  .string()
+  .optional()
+  .transform((value, ctx) => {
+    const keys = new Map<number, Buffer>();
+    for (const entry of (value ?? '').split(',')) {
+      const pair = entry.trim();
+      if (pair === '') continue;
+      const colon = pair.indexOf(':');
+      const version = colon > 0 ? pair.slice(0, colon) : '';
+      const decoded = decodeKey(pair.slice(colon + 1));
+      if (!/^\d+$/.test(version) || Number(version) < 1) {
+        ctx.addIssue({ code: 'custom', message: 'entries must look like 1:<base64 key>' });
+        return z.NEVER;
+      }
+      if (decoded === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `version ${version} must be base64 for exactly 32 bytes`,
+        });
+        return z.NEVER;
+      }
+      if (keys.has(Number(version))) {
+        ctx.addIssue({ code: 'custom', message: `version ${version} is listed twice` });
+        return z.NEVER;
+      }
+      keys.set(Number(version), decoded);
+    }
+    return keys;
+  });
+
 /** Settings every server process (API and worker) needs. */
 const serverEnv = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
@@ -57,7 +90,39 @@ const serverEnv = z.object({
 
   SECRETS_ENCRYPTION_KEY: key,
   SECRETS_ENCRYPTION_KEY_VERSION: wholeNumber(1, Number.MAX_SAFE_INTEGER),
+  SECRETS_ENCRYPTION_PREVIOUS_KEYS: previousKeys,
+
+  /** Where data sources may point (D-48). Development env files set
+   * allow-private so a local demo database works. */
+  SOURCE_NETWORK_POLICY: z.enum(['public-only', 'allow-private']).default('public-only'),
 });
+
+/** Previous keys must be older than the current one and not reuse it. Runs
+ * even when fields failed, so it checks types at runtime. */
+function checkPreviousKeys(
+  env: { [K in keyof z.output<typeof serverEnv>]?: unknown },
+  ctx: z.RefinementCtx,
+) {
+  const previous = env.SECRETS_ENCRYPTION_PREVIOUS_KEYS;
+  const version = env.SECRETS_ENCRYPTION_KEY_VERSION;
+  const current = env.SECRETS_ENCRYPTION_KEY;
+  if (!(previous instanceof Map) || typeof version !== 'number') return;
+  for (const [older, key] of previous as Map<number, Buffer>) {
+    const message =
+      older >= version
+        ? `version ${older} must be lower than SECRETS_ENCRYPTION_KEY_VERSION`
+        : Buffer.isBuffer(current) && current.equals(key)
+          ? `version ${older} must not reuse SECRETS_ENCRYPTION_KEY`
+          : undefined;
+    if (message !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['SECRETS_ENCRYPTION_PREVIOUS_KEYS'], message });
+      return;
+    }
+  }
+}
+
+/** The worker's settings, with the cross-field key checks. */
+const workerEnv = serverEnv.superRefine(checkPreviousKeys);
 
 const optional = z
   .string()
@@ -78,6 +143,7 @@ const apiEnv = serverEnv
     GITHUB_CLIENT_SECRET: optional,
   })
   .superRefine((env, ctx) => {
+    checkPreviousKeys(env, ctx);
     // Zod runs this check even when fields failed, and then a field may hold
     // its raw input instead of the transformed type. Check at runtime.
     // One key per purpose: a leaked session key must not decrypt stored secrets.
@@ -116,4 +182,4 @@ const apiEnv = serverEnv
 export type ServerEnv = z.output<typeof serverEnv>;
 export type ApiEnv = z.output<typeof apiEnv>;
 
-export { apiEnv, serverEnv };
+export { apiEnv, serverEnv, workerEnv };

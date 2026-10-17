@@ -24,6 +24,7 @@
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/contracts" },
+    { "path": "../../packages/connectors" },
     { "path": "../../packages/db/tsconfig.lib.json" }
   ]
 }

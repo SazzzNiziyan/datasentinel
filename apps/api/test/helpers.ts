@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { createPrismaClient } from '@datasentinel/db';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { AppModule } from '../src/app.module.js';
 import { hashPassword } from '../src/auth/password.js';
 import { MemoryRateLimiter, RATE_LIMITER } from '../src/auth/rate-limit.js';
@@ -10,6 +10,13 @@ import { DEPENDENCY_CHECKS } from '../src/health/dependency-checks.js';
 import { configureHttp } from '../src/http.js';
 import { UPLOAD_STORAGE, type StoredObject, type UploadStorage } from '../src/storage/storage.js';
 import { UPLOAD_QUEUE, type UploadQueue } from '../src/uploads/upload-queue.js';
+import { keyRing } from '@datasentinel/connectors';
+import type { DiscoveryOutcome } from '@datasentinel/contracts';
+import { SOURCE_SECURITY } from '../src/credentials/credentials.js';
+import { SOURCE_JOBS, type SourceJobs } from '../src/sources/source-jobs.js';
+
+/** Test keys: sources created through the API are sealed with these. */
+export const testKeyRing = keyRing({ key: randomBytes(32), version: 7 });
 
 export const WEB = 'http://localhost:5173';
 export const PASSWORD = 'correct horse battery staple';
@@ -54,10 +61,33 @@ export class RecordingUploadQueue implements UploadQueue {
   }
 }
 
+/** Records connection tests instead of sending them to Redis. */
+export class RecordingSourceJobs implements SourceJobs {
+  readonly jobs: { workspaceId: string; connectionTestId: string }[] = [];
+  /** What discover() answers; null acts like a worker that never replies. */
+  discovery: DiscoveryOutcome | null = { ok: true, discovery: { tables: [], truncated: false } };
+  enqueueTest(data: { workspaceId: string; connectionTestId: string }) {
+    this.jobs.push(data);
+    return Promise.resolve();
+  }
+  discover() {
+    return Promise.resolve(this.discovery);
+  }
+  readonly profiles: { workspaceId: string; datasetId: string }[] = [];
+  enqueueProfile(data: { workspaceId: string; datasetId: string }) {
+    this.profiles.push(data);
+    return Promise.resolve();
+  }
+}
+
 /** Starts the real API module against the local database. Storage and the
  * queue are fakes unless a test passes its own. */
 export async function startApi(
-  fakes: { storage?: UploadStorage; queue?: UploadQueue } = {},
+  fakes: {
+    storage?: UploadStorage;
+    queue?: UploadQueue;
+    sourceJobs?: SourceJobs;
+  } = {},
 ): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
     imports: [
@@ -78,6 +108,10 @@ export async function startApi(
     .useValue(fakes.storage ?? new FakeUploadStorage())
     .overrideProvider(UPLOAD_QUEUE)
     .useValue(fakes.queue ?? new RecordingUploadQueue())
+    .overrideProvider(SOURCE_JOBS)
+    .useValue(fakes.sourceJobs ?? new RecordingSourceJobs())
+    .overrideProvider(SOURCE_SECURITY)
+    .useValue({ ring: testKeyRing, networkPolicy: 'public-only' })
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureHttp(app, WEB);

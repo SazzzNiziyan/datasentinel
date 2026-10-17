@@ -179,3 +179,54 @@ describe('loadWorkerEnv', () => {
     assert.equal(loadWorkerEnv(workerOnly).SECRETS_ENCRYPTION_KEY_VERSION, 1);
   });
 });
+
+describe('SECRETS_ENCRYPTION_PREVIOUS_KEYS', () => {
+  const OLD = randomBytes(32).toString('base64');
+  const OLDER = randomBytes(32).toString('base64');
+  const current = { ...valid, SECRETS_ENCRYPTION_KEY_VERSION: '3' };
+
+  it('is optional and empty by default', () => {
+    assert.equal(loadWorkerEnv(current).SECRETS_ENCRYPTION_PREVIOUS_KEYS.size, 0);
+  });
+
+  it('maps each older version to its key', () => {
+    const keys = loadWorkerEnv({
+      ...current,
+      SECRETS_ENCRYPTION_PREVIOUS_KEYS: `2:${OLD}, 1:${OLDER}`,
+    }).SECRETS_ENCRYPTION_PREVIOUS_KEYS;
+    assert.deepEqual([...keys.keys()], [2, 1]);
+    assert.equal(keys.get(2)?.toString('base64'), OLD);
+  });
+
+  it('rejects bad entries without echoing any key', () => {
+    for (const value of [
+      `x:${OLD}`,
+      `2:not-a-key`,
+      `3:${OLD}`,
+      `4:${OLD}`,
+      `2:${OLD},2:${OLDER}`,
+      `2:${KEY}`,
+    ]) {
+      const found = problems(() =>
+        loadWorkerEnv({ ...current, SECRETS_ENCRYPTION_PREVIOUS_KEYS: value }),
+      );
+      assert.equal(found.length, 1, value);
+      assert.match(found[0] ?? '', /^SECRETS_ENCRYPTION_PREVIOUS_KEYS /);
+      assert.doesNotMatch(found.join(' '), new RegExp(OLD.slice(0, 12).replace(/[+/]/g, '.')));
+    }
+  });
+});
+
+describe('SOURCE_NETWORK_POLICY', () => {
+  it('defaults to public-only and accepts allow-private', () => {
+    assert.equal(loadWorkerEnv(valid).SOURCE_NETWORK_POLICY, 'public-only');
+    assert.equal(
+      loadWorkerEnv({ ...valid, SOURCE_NETWORK_POLICY: 'allow-private' }).SOURCE_NETWORK_POLICY,
+      'allow-private',
+    );
+    assert.equal(
+      problems(() => loadWorkerEnv({ ...valid, SOURCE_NETWORK_POLICY: 'any' })).length,
+      1,
+    );
+  });
+});

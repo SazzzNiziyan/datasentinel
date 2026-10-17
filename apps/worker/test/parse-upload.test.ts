@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { after, describe, it } from 'node:test';
 import { handleParseUpload, type ObjectOpener } from '../src/jobs/parse-upload.js';
+import { readMeasurements } from '../src/jobs/profile-metrics.js';
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
 const prisma = createPrismaClient(databaseUrl || 'postgresql://unused@127.0.0.1:1/unused');
@@ -104,12 +105,16 @@ describe('parse-upload job', { skip }, () => {
     assert.equal(profile.rowCountMethod, 'exact');
     assert.equal(profile.datasetId, row.datasetId);
     assert.deepEqual(profile.lastUpdatedAt, row.completedAt);
-    assert.deepEqual(profile.metrics, {
-      columns: [
-        { name: 'id', type: 'integer', nullCount: 0 },
-        { name: 'name', type: 'text', nullCount: 0 },
-      ],
-    });
+    assert.deepEqual((profile.metrics as { columns: unknown }).columns, [
+      { name: 'id', type: 'integer', nullCount: 0 },
+      { name: 'name', type: 'text', nullCount: 0 },
+    ]);
+    const at = profile.observedAt.toISOString();
+    assert.deepEqual(readMeasurements(profile.metrics), [
+      { metric: 'row_count', column: null, value: 2, method: 'exact', observedAt: at },
+      { metric: 'null_count', column: 'id', value: 0, method: 'exact', observedAt: at },
+      { metric: 'null_count', column: 'name', value: 0, method: 'exact', observedAt: at },
+    ]);
     assert.deepEqual(profile.schema?.columns, [
       { name: 'id', type: 'integer', nullable: false, ordinal: 1 },
       { name: 'name', type: 'text', nullable: false, ordinal: 2 },

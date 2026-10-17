@@ -22,8 +22,12 @@ import { WorkspaceGuard } from './workspaces/workspace.guard.js';
 import { WorkspacesController } from './workspaces/workspaces.controller.js';
 import { APP_OPTIONS, type AppOptions } from './options.js';
 import { ProblemFilter } from './problem.js';
+import { LifecycleController } from './sources/lifecycle.controller.js';
+import { ConnectionTestsController } from './sources/connection-tests.controller.js';
+import { BullSourceJobs, SOURCE_JOBS } from './sources/source-jobs.js';
 import { SourcesController } from './sources/sources.controller.js';
 import { S3UploadStorage, UPLOAD_STORAGE } from './storage/storage.js';
+import { lazySourceSecurity, SOURCE_SECURITY } from './credentials/credentials.js';
 import { BullUploadQueue, UPLOAD_QUEUE } from './uploads/upload-queue.js';
 import { UploadsController } from './uploads/uploads.controller.js';
 
@@ -42,6 +46,8 @@ export class AppModule {
         WorkspacesController,
         MembersController,
         SourcesController,
+        LifecycleController,
+        ConnectionTestsController,
         UploadsController,
         InvitationsController,
         AcceptInvitationController,
@@ -62,7 +68,16 @@ export class AppModule {
         // Like the dependency checks, these read the environment only when
         // built, so tests replace them without a full .env.
         { provide: UPLOAD_STORAGE, useFactory: () => new S3UploadStorage(loadApiEnv) },
+        {
+          provide: SOURCE_SECURITY,
+          // Reads the environment on first use, like the storage provider.
+          useFactory: () => lazySourceSecurity(loadApiEnv),
+        },
         { provide: UPLOAD_QUEUE, useFactory: () => new BullUploadQueue(options.redisUrl) },
+        {
+          provide: SOURCE_JOBS,
+          useFactory: () => new BullSourceJobs(options.redisUrl),
+        },
         {
           provide: DEPENDENCY_CHECKS,
           // Reads the environment only when the real checks are built, so

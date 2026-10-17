@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { apiEnv, serverEnv, type ApiEnv, type ServerEnv } from './env.ts';
+import { apiEnv, workerEnv, type ApiEnv, type ServerEnv } from './env.ts';
 
 export type { ApiEnv, ServerEnv };
 export { decodeKey, KEY_BYTES } from './secret-key.ts';
@@ -42,5 +42,5 @@ export function loadApiEnv(env: Env = process.env): ApiEnv {
 
 /** Validates the worker process environment. Call once at startup. */
 export function loadWorkerEnv(env: Env = process.env): ServerEnv {
-  return parse('worker', serverEnv, env);
+  return parse('worker', workerEnv, env);
 }

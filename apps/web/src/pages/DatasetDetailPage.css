@@ -56,3 +56,9 @@
   font-size: var(--text-helper);
   color: var(--color-text-muted);
 }
+
+.dataset-archived {
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-border-strong);
+  background: var(--color-surface);
+}

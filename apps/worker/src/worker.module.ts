@@ -9,6 +9,10 @@ import {
   type WorkerOptions,
 } from './queue/system-queue.service.js';
 import { PARSE_UPLOAD_DEPS, UploadQueueService } from './queue/upload-queue.service.js';
+import { SourceQueueService, TEST_CONNECTION_DEPS } from './queue/source-queue.service.js';
+import { keyRing } from '@datasentinel/connectors';
+import { Redis } from 'ioredis';
+import { RedisSourceSlots } from './queue/source-slots.js';
 import { s3ObjectOpener } from './storage/object-opener.js';
 
 export interface WorkerModuleOptions extends WorkerOptions {
@@ -38,6 +42,24 @@ export class WorkerModule {
           },
         },
         UploadQueueService,
+        {
+          provide: TEST_CONNECTION_DEPS,
+          // Keys and policy come from the environment (D-46, D-48).
+          useFactory: () => {
+            const env = loadWorkerEnv();
+            return {
+              prisma: createPrismaClient(env.DATABASE_URL),
+              ring: keyRing({
+                key: env.SECRETS_ENCRYPTION_KEY,
+                version: env.SECRETS_ENCRYPTION_KEY_VERSION,
+                previous: env.SECRETS_ENCRYPTION_PREVIOUS_KEYS,
+              }),
+              policy: env.SOURCE_NETWORK_POLICY,
+              slots: new RedisSourceSlots(new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 })),
+            };
+          },
+        },
+        SourceQueueService,
       ],
     };
   }

@@ -165,7 +165,10 @@ export function UploadCsvDialog({
         </div>
       ) : (
         <form className="upload-dialog__form" onSubmit={submit}>
-          <fieldset className="upload-dialog__fields" disabled={busy || state.phase === 'succeeded'}>
+          <fieldset
+            className="upload-dialog__fields"
+            disabled={busy || state.phase === 'succeeded'}
+          >
             <label className="upload-dialog__field">
               Source
               <select
@@ -245,8 +248,9 @@ export function UploadCsvDialog({
               />
             </label>
             <p id={fileHelpId} className="upload-dialog__help">
-              Comma-separated UTF-8 text with a header row, up to {CSV_LIMITS.maxBytes / 1024 / 1024}{' '}
-              MB and {CSV_LIMITS.maxColumns.toLocaleString('en-US')} columns.
+              Comma-separated UTF-8 text with a header row, up to{' '}
+              {CSV_LIMITS.maxBytes / 1024 / 1024} MB and{' '}
+              {CSV_LIMITS.maxColumns.toLocaleString('en-US')} columns.
             </p>
           </fieldset>
 

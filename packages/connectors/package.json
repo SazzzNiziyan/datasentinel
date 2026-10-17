@@ -18,9 +18,14 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b test",
-    "test": "node --conditions=@datasentinel/source --test \"test/**/*.test.ts\"",
+    "test": "node --env-file-if-exists=../../.env --conditions=@datasentinel/source --test \"test/**/*.test.ts\"",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "eslint ."
   },
-  "dependencies": {}
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
 }

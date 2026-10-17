@@ -78,3 +78,7 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+.page-actions > .lifecycle-actions {
+  display: contents;
+}

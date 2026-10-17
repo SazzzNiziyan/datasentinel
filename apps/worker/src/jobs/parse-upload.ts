@@ -2,6 +2,7 @@ import type { ParseUploadJobData, UploadFailure } from '@datasentinel/contracts'
 import type { PrismaClient } from '@datasentinel/db';
 import { createHash } from 'node:crypto';
 import { CsvRejection, scanCsv, type CsvSummary } from '../csv/scan-csv.js';
+import { profileMetrics } from './profile-metrics.js';
 
 /** Opens a stored object as a byte stream; null when it does not exist. */
 export type ObjectOpener = (
@@ -29,7 +30,7 @@ const internal: UploadFailure = {
 };
 
 /** Equal for the same column names, types, and order (D-43). */
-export function schemaHash(columns: CsvSummary['columns']): string {
+export function schemaHash(columns: readonly { name: string; type: string }[]): string {
   return createHash('sha256')
     .update(JSON.stringify(columns.map((c) => [c.name, c.type])))
     .digest('hex');
@@ -108,7 +109,7 @@ export async function handleParseUpload(
           rowCount,
           rowCountMethod: 'exact',
           lastUpdatedAt: upload.completedAt,
-          metrics: { columns: columns.map((c) => ({ ...c })) },
+          metrics: profileMetrics({ observedAt, rowCount, rowCountMethod: 'exact', columns }),
         },
         select: { id: true },
       });

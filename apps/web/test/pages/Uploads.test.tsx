@@ -8,41 +8,8 @@ import { DatasetDetailPage } from '../../src/pages/DatasetDetailPage.tsx';
 import { SourcesPage } from '../../src/pages/SourcesPage.tsx';
 import { hashFile } from '../../src/uploads/hashFile.ts';
 import { UploadCsvDialog } from '../../src/uploads/UploadCsvDialog.tsx';
+import { reply, routeApi } from '../api.ts';
 import { fakeSession, signedIn, WithSession } from '../session.tsx';
-
-type Handler = (body: unknown) => unknown;
-
-/** An answer with a status other than 200. */
-class Reply {
-  constructor(
-    readonly status: number,
-    readonly body: unknown,
-  ) {}
-}
-const reply = (status: number, body: unknown) => new Reply(status, body);
-
-/** Answers requests by "METHOD path" (path without the API base); records
- * every call. Unknown requests fail like a network error. */
-function routeApi(routes: Record<string, Handler | Handler[]>) {
-  const calls: { key: string; body: unknown }[] = [];
-  const fetch = vi.fn((url: string, init: RequestInit = {}) => {
-    const path = new URL(url, 'http://api.test').pathname + new URL(url, 'http://api.test').search;
-    const key = `${init.method ?? 'GET'} ${path}`;
-    const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
-    calls.push({ key, body });
-    const route = routes[key];
-    const handler = Array.isArray(route) ? (route.length > 1 ? route.shift() : route[0]) : route;
-    if (handler === undefined) return Promise.reject(new TypeError(`no route for ${key}`));
-    const answer = handler(body);
-    const { status, json } =
-      answer instanceof Reply
-        ? { status: answer.status, json: answer.body }
-        : { status: 200, json: answer };
-    return Promise.resolve(new Response(JSON.stringify(json), { status }));
-  });
-  vi.stubGlobal('fetch', fetch);
-  return calls;
-}
 
 const csvSource = {
   id: 's1',
@@ -243,6 +210,7 @@ const dataset = {
   ownerName: null,
   locator: { format: 'csv' },
   createdAt: '2026-10-17T09:00:00.000Z',
+  archivedAt: null,
   latestProfile: profile,
   lastSuccessfulProfile: profile,
 };
@@ -369,9 +337,9 @@ describe('Add CSV source', () => {
         </MemoryRouter>
       </WithSession>,
     );
-    await user.click(await screen.findByRole('button', { name: 'Add CSV source' }));
+    await user.click(await screen.findByRole('button', { name: 'Add source' }));
     await user.type(screen.getByLabelText('Name'), 'Exports');
-    await user.click(screen.getByRole('button', { name: 'Add source' }));
+    await user.click(screen.getByRole('button', { name: 'Add CSV source' }));
     expect(await screen.findByText('Exports')).toBeVisible();
     expect(calls.find((c) => c.key === 'POST /workspaces/w1/sources')?.body).toEqual({
       name: 'Exports',
@@ -389,7 +357,7 @@ describe('Add CSV source', () => {
       </WithSession>,
     );
     await screen.findByRole('heading', { name: 'No data sources yet' });
-    expect(screen.queryByRole('button', { name: 'Add CSV source' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add source' })).toBeNull();
   });
 });
 

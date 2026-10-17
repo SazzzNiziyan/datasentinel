@@ -122,6 +122,7 @@ model Membership {
   ownedDatasets   Dataset[]
   invitationsSent Invitation[]
   uploadsCreated  Upload[]
+  connectionTests ConnectionTest[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -198,11 +199,12 @@ model DataSource {
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner       Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
-  credentials SourceCredential[]
-  datasets    Dataset[]
-  uploads     Upload[]
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner           Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  credentials     SourceCredential[]
+  datasets        Dataset[]
+  connectionTests ConnectionTest[]
+  uploads         Upload[]
 
   @@unique([workspaceId, name])
   /// Target of composite foreign keys that keep children in the same workspace.
@@ -393,4 +395,33 @@ model SchemaSnapshot {
 
   @@index([workspaceId, datasetId, observedAt])
   @@map("schema_snapshots")
+}
+
+enum ConnectionTestStatus {
+  queued
+  running
+  succeeded
+  failed
+}
+
+/// One "test connection" request for a source (D-49), run by the worker.
+model ConnectionTest {
+  id                      String               @id @default(uuid(7)) @db.Uuid
+  workspaceId             String               @map("workspace_id") @db.Uuid
+  sourceId                String               @map("source_id") @db.Uuid
+  status                  ConnectionTestStatus @default(queued)
+  /// Major.minor only, e.g. "16.4".
+  serverVersion           String?              @map("server_version")
+  latencyMs               Int?                 @map("latency_ms")
+  /// Safe failure (ConnectorFailure JSON), never driver text.
+  error                   Json?
+  requestedByMembershipId String               @map("requested_by_membership_id") @db.Uuid
+  createdAt               DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  finishedAt              DateTime?            @map("finished_at") @db.Timestamptz(3)
+
+  source      DataSource @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  requestedBy Membership @relation(fields: [workspaceId, requestedByMembershipId], references: [workspaceId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([workspaceId, sourceId, createdAt])
+  @@map("connection_tests")
 }

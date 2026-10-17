@@ -28,3 +28,31 @@ export interface ParseUploadJobData {
   workspaceId: string;
   uploadId: string;
 }
+
+/** Source jobs such as connection tests (D-49). */
+export const SOURCE_QUEUE = 'sources';
+
+/** Tests one source's connection. The job ID is the test ID. */
+export const TEST_CONNECTION_JOB = 'test-connection';
+
+export interface TestConnectionJobData {
+  workspaceId: string;
+  connectionTestId: string;
+}
+
+/** Lists a source's readable tables (D-50). The API waits for the result. */
+export const DISCOVER_TABLES_JOB = 'discover-tables';
+
+export interface DiscoverTablesJobData {
+  workspaceId: string;
+  sourceId: string;
+}
+
+/** Profiles one database dataset (D-52). Job ID `profile-<datasetId>`, so
+ * one run per dataset is pending at a time. */
+export const PROFILE_DATASET_JOB = 'profile-dataset';
+
+export interface ProfileDatasetJobData {
+  workspaceId: string;
+  datasetId: string;
+}
