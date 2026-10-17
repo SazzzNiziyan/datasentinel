@@ -6,10 +6,10 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 95 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
+- **Last updated:** 2026-10-18. **Done:** 135 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G, H, and I are complete; Phase J is in progress). Decisions D-01 to D-84 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G, H, and I are complete; Phase J is complete; Phase K is complete; Phase L is complete; Phase M is complete; Phase N is in progress). Decisions D-01 to D-125 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -188,70 +188,70 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Build incident detail with expected/actual values and related runs. (D-83)
 - [x] Implement acknowledge, investigate, assign, resolve, and reopen transitions. (D-84)
 - [x] Require and preserve a resolution note. (D-84)
-- [ ] Add comments and status/assignment history.
-- [ ] Add owner notifications as pending outbox events.
-- [ ] Verify repeated check failures append evidence instead of creating duplicate incident spam.
+- [x] Add comments and status/assignment history. (D-85)
+- [x] Add owner notifications as pending outbox events. (D-86)
+- [x] Verify repeated check failures append evidence instead of creating duplicate incident spam. (D-87)
 
 **Phase gate:** one data problem is traceable from rule revision through check run, incident, evidence, owner, and resolution.
 
 ## 12. Phase K — Alerts and integrations
 
-- [ ] Define typed integration and alert-destination configuration.
-- [ ] Add email delivery adapter with safe templates and delivery records.
-- [ ] Add Slack notification adapter with least-privilege configuration.
-- [ ] Add signed outgoing webhook delivery.
-- [ ] Add destination test action with explicit confirmation.
-- [ ] Add retries, deduplication, and delivery status UI.
-- [ ] Add credential rotation and disable/archive flows.
-- [ ] Add scoped inbound pipeline webhook authentication and replay protection.
-- [ ] Add GitHub issue and n8n adapters behind feature/configuration flags.
-- [ ] Ensure integrations never receive raw source rows or secrets by default.
+- [x] Define typed integration and alert-destination configuration. (D-88)
+- [x] Add email delivery adapter with safe templates and delivery records. (D-89)
+- [x] Add Slack notification adapter with least-privilege configuration. (D-90)
+- [x] Add signed outgoing webhook delivery. (D-91)
+- [x] Add destination test action with explicit confirmation. (D-92)
+- [x] Add retries, deduplication, and delivery status UI. (D-93)
+- [x] Add credential rotation and disable/archive flows. (D-94)
+- [x] Add scoped inbound pipeline webhook authentication and replay protection. (D-95)
+- [x] Add GitHub issue and n8n adapters behind feature/configuration flags. (D-96)
+- [x] Ensure integrations never receive raw source rows or secrets by default. (D-97)
 
 **Phase gate:** delivery failures are visible and retryable; each integration has bounded permissions and audited configuration.
 
 ## 13. Phase L — AI investigation and documentation retrieval
 
-- [ ] Decide whether AI is enabled globally and per workspace; record provider, region, and retention policy.
-- [ ] Define the structured investigation report schema.
-- [ ] Implement the provider-neutral LLM adapter with timeout, budget, and retry limits.
-- [ ] Implement redaction/minimization before provider calls.
-- [ ] Add supported pipeline-document upload and safe text extraction.
-- [ ] Store workspace-scoped document chunks and source section metadata.
-- [ ] Add full-text retrieval; add pgvector only if a reviewed need exists and extension support is confirmed.
-- [ ] Build a prompt that separates trusted incident facts from untrusted retrieved text and ignores instructions inside documents/logs.
-- [ ] Validate model output against the schema and reject invalid output safely.
-- [ ] Store report versions with evidence IDs, template/provider version, and status.
-- [ ] Show facts, hypotheses, suggested checks, confidence, and limitations distinctly in the incident UI.
-- [ ] Add report regeneration, feedback, opt-out, and provider-failure behavior.
-- [ ] Verify no direct identifiers, raw rows, credentials, or unapproved content reach the provider.
+- [x] Decide whether AI is enabled globally and per workspace; record provider, region, and retention policy. (D-99)
+- [x] Define the structured investigation report schema. (D-100)
+- [x] Implement the provider-neutral LLM adapter with timeout, budget, and retry limits. (D-101)
+- [x] Implement redaction/minimization before provider calls. (D-102)
+- [x] Add supported pipeline-document upload and safe text extraction. (D-103)
+- [x] Store workspace-scoped document chunks and source section metadata. (D-104)
+- [x] Add full-text retrieval; add pgvector only if a reviewed need exists and extension support is confirmed. (D-105)
+- [x] Build a prompt that separates trusted incident facts from untrusted retrieved text and ignores instructions inside documents/logs. (D-106)
+- [x] Validate model output against the schema and reject invalid output safely. (D-107)
+- [x] Store report versions with evidence IDs, template/provider version, and status. (D-108, D-109)
+- [x] Show facts, hypotheses, suggested checks, confidence, and limitations distinctly in the incident UI. (D-111)
+- [x] Add report regeneration, feedback, opt-out, and provider-failure behavior. (D-110)
+- [x] Verify no direct identifiers, raw rows, credentials, or unapproved content reach the provider. (D-112)
 
 **Phase gate:** AI is advisory, evidence-linked, redacted, auditable, and non-blocking for core checks/incidents.
 
 ## 14. Phase M — Approved recovery actions
 
-- [ ] Define typed action schemas for validation rerun, supported demo/import retry, notification, GitHub issue, and n8n trigger.
-- [ ] Create action proposal and exact payload preview.
-- [ ] Define who may request, approve, reject, and execute each action.
-- [ ] Add payload hash and expiry to the approval record.
-- [ ] Prevent self-approval where the workspace policy requires a second person.
-- [ ] Recheck permission, approval, payload hash, expiry, and idempotency in the worker.
-- [ ] Add execution log, safe output, retry policy, and audit events.
-- [ ] Confirm that no action can write to a monitored source database.
+- [x] Define typed action schemas for validation rerun, supported demo/import retry, notification, GitHub issue, and n8n trigger. (D-113)
+- [x] Create action proposal and exact payload preview. (D-113)
+- [x] Define who may request, approve, reject, and execute each action. (D-115)
+- [x] Add payload hash and expiry to the approval record. (D-114)
+- [x] Prevent self-approval where the workspace policy requires a second person. (D-116)
+- [x] Recheck permission, approval, payload hash, expiry, and idempotency in the worker. (D-118)
+- [x] Add execution log, safe output, retry policy, and audit events. (D-117)
+- [x] Confirm that no action can write to a monitored source database. (D-119)
 
 **Phase gate:** no action starts without a current valid approval, and every result is attributable.
 
 ## 15. Phase N — Finish, harden, deploy, and operate
 
-- [ ] Review all API routes for permission and workspace checks.
+- [x] Review all API routes for permission and workspace checks. (D-120)
 - [ ] Review all logs, job payloads, errors, and AI inputs for secrets/raw data.
-- [ ] Add versioned migrations and an upgrade/rollback procedure.
+- [x] Add versioned migrations and an upgrade/rollback procedure. (D-122)
 - [ ] Add automated checks for API, UI, worker, connector, authorization, and critical acceptance paths.
-- [ ] Add synthetic datasets that demonstrate healthy, stale, incomplete, duplicate, schema-drift, and 60%-drop cases.
-- [ ] Add health/readiness endpoints and operational metrics for queues, sources, checks, alerts, and AI failures.
+- [x] Add synthetic datasets that demonstrate healthy, stale, incomplete, duplicate, schema-drift, and 60%-drop cases. (D-123)
+- [x] Add health/readiness endpoints and operational metrics for queues, sources, checks, alerts, and AI failures. (D-121)
 - [ ] Add backup and restore instructions; perform a restore rehearsal before production.
-- [ ] Add container build and deployment configuration for isolated environments.
+- [x] Add container build and deployment configuration for isolated environments. (D-124)
 - [ ] Configure TLS, DNS, secret manager, database/Redis networking, object-store policy, and outbound source allowlists.
-- [ ] Add release notes and a migration gate.
+- [x] Add release notes and a migration gate. (D-125)
 - [ ] Run a staging end-to-end acceptance walkthrough with fake/synthetic data.
 - [ ] Verify retention/deletion and incident-response runbooks.
 - [ ] Review permissions and feature flags before enabling customer connections.

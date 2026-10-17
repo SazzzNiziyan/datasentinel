@@ -13,6 +13,10 @@ import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
 import { PermissionDenied } from '../components/PermissionDenied.tsx';
+import { ActionPolicyPanel } from '../settings/ActionPolicyPanel.tsx';
+import { AiSettingsPanel } from '../settings/AiSettingsPanel.tsx';
+import { DestinationsPanel } from '../settings/DestinationsPanel.tsx';
+import { DocumentsPanel } from '../settings/DocumentsPanel.tsx';
 import { QueueJobsPanel } from '../settings/QueueJobsPanel.tsx';
 import { canArchive } from './labels.ts';
 import './SettingsPage.css';
@@ -51,6 +55,10 @@ export function SettingsPage() {
         />
       )}
       {canArchive(workspace.role) && <QueueJobsPanel workspaceId={workspace.workspaceId} />}
+      {canArchive(workspace.role) && <DestinationsPanel workspaceId={workspace.workspaceId} />}
+      <DocumentsPanel workspaceId={workspace.workspaceId} role={workspace.role} />
+      <AiSettingsPanel workspaceId={workspace.workspaceId} role={workspace.role} />
+      <ActionPolicyPanel workspaceId={workspace.workspaceId} role={workspace.role} />
     </PageFrame>
   );
 }

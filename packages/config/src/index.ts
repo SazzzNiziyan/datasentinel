@@ -41,6 +41,8 @@ export function loadApiEnv(env: Env = process.env): ApiEnv {
 }
 
 /** Validates the worker process environment. Call once at startup. */
-export function loadWorkerEnv(env: Env = process.env): ServerEnv {
+export function loadWorkerEnv(
+  env: Env = process.env,
+): ServerEnv & { WEB_ORIGIN?: string | undefined } {
   return parse('worker', workerEnv, env);
 }

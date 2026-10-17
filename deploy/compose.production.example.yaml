@@ -1,0 +1,40 @@
+# EXAMPLE ONLY: shows how the images connect. Real deployments should use a
+# managed PostgreSQL, Redis and object store on private networks, TLS in
+# front, and secrets from a secret manager (docs/11-operations-runbook.md).
+name: datasentinel-example
+
+x-env: &env # Supplied by your environment; never commit values.
+  env_file: [.env]
+
+services:
+  migrate:
+    <<: *env
+    image: datasentinel-api:release
+    working_dir: /repo/packages/db
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    restart: 'no'
+
+  api:
+    <<: *env
+    image: datasentinel-api:release
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    ports: ['127.0.0.1:3000:3000']
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/health/ready']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    <<: *env
+    image: datasentinel-worker:release
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  web:
+    image: datasentinel-web:release
+    ports: ['127.0.0.1:8080:8080']
+    restart: unless-stopped

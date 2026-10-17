@@ -1,18 +1,30 @@
 import {
   canTransitionIncident,
   compareIncidentsByPriority,
+  CreateIncidentCommentRequest,
   IncidentQuery,
   UpdateIncidentRequest,
   type EvidenceKind,
   type IncidentStatus,
   type IncidentDetail,
+  type IncidentCommentItem,
   type IncidentHistoryItem,
   type IncidentListItem,
   type IncidentPage,
   type IncidentRelatedRun,
 } from '@datasentinel/contracts';
-import type { Prisma, PrismaClient } from '@datasentinel/db';
-import { Body, Controller, Get, HttpStatus, Inject, Param, Patch, Query } from '@nestjs/common';
+import { enqueueIncidentNotification, type Prisma, type PrismaClient } from '@datasentinel/db';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CurrentRequest, recordAudit, type RequestMeta } from '../audit/audit.js';
 import { CurrentPrincipal, type Principal } from '../auth/session.guard.js';
 import { PRISMA } from '../db.js';
@@ -61,6 +73,24 @@ const toItem = (r: ItemRow): IncidentListItem => ({
   lastFailureAt: r.lastFailureAt.toISOString(),
   openedAt: r.openedAt.toISOString(),
   resolvedAt: r.resolvedAt?.toISOString() ?? null,
+});
+
+const commentSelect = {
+  id: true,
+  authorMembershipId: true,
+  text: true,
+  createdAt: true,
+  author: { select: { user: { select: { displayName: true } } } },
+} as const;
+
+const toComment = (
+  c: Prisma.IncidentCommentGetPayload<{ select: typeof commentSelect }>,
+): IncidentCommentItem => ({
+  id: c.id,
+  authorMembershipId: c.authorMembershipId,
+  authorName: c.author?.user.displayName ?? null,
+  text: c.text,
+  createdAt: c.createdAt.toISOString(),
 });
 
 const incidentNotFound = () =>
@@ -266,11 +296,40 @@ export class IncidentsController {
           });
         }
         if (events.length === 0) return;
-        await tx.incident.update({ where: { id: incidentId }, data });
-        // One timestamp per event, in order, so the history reads in order.
-        await tx.incidentEvent.createMany({
-          data: events.map((e, i) => ({ ...e, createdAt: new Date(now.getTime() + i) })),
+        const updated = await tx.incident.update({
+          where: { id: incidentId },
+          data,
+          select: {
+            title: true,
+            severity: true,
+            datasetId: true,
+            assignedMembershipId: true,
+            dataset: { select: { name: true } },
+          },
         });
+        // One timestamp per event, in order, so the history reads in order.
+        const written = await tx.incidentEvent.createManyAndReturn({
+          data: events.map((e, i) => ({ ...e, createdAt: new Date(now.getTime() + i) })),
+          select: { id: true, type: true },
+        });
+        // Notifications are written with the events they announce (D-86).
+        for (const event of written) {
+          if (event.type !== 'reopened' && event.type !== 'assigned') continue;
+          await enqueueIncidentNotification(tx, {
+            workspaceId,
+            incidentId,
+            incidentEventId: event.id,
+            kind: event.type === 'reopened' ? 'incident_reopened' : 'incident_assigned',
+            datasetId: updated.datasetId,
+            assignedMembershipId: updated.assignedMembershipId,
+            actorMembershipId: membershipId,
+            payload: {
+              title: updated.title,
+              severity: updated.severity,
+              datasetName: updated.dataset.name,
+            },
+          });
+        }
         await recordAudit(tx, {
           action: 'incident.updated',
           actor: { type: 'user', id: principal.userId },
@@ -308,6 +367,50 @@ export class IncidentsController {
     return this.load(workspaceId, incidentId);
   }
 
+  /** Adds a comment (D-85). Analysts and above may comment; comments are
+   * plain text, kept as written, and cannot be edited or deleted. */
+  @RequireRole('analyst')
+  @Post(':incidentId/comments')
+  async comment(
+    @CurrentWorkspace() { workspaceId, membershipId }: WorkspaceAccess,
+    @CurrentPrincipal() principal: Principal,
+    @CurrentRequest() request: RequestMeta,
+    @Param('incidentId') incidentId: string,
+    @Body() body: unknown,
+  ): Promise<IncidentCommentItem> {
+    const input = CreateIncidentCommentRequest.safeParse(body);
+    if (!input.success) {
+      throw new ProblemException(
+        HttpStatus.BAD_REQUEST,
+        'invalid_request',
+        'Write a comment of up to 2,000 characters.',
+      );
+    }
+    const exists = isUuid(incidentId)
+      ? await this.prisma.incident.findFirst({
+          where: { id: incidentId, workspaceId },
+          select: { id: true },
+        })
+      : null;
+    if (exists === null) throw incidentNotFound();
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.incidentComment.create({
+        data: { workspaceId, incidentId, authorMembershipId: membershipId, text: input.data.text },
+        select: commentSelect,
+      });
+      await recordAudit(tx, {
+        action: 'incident.commented',
+        actor: { type: 'user', id: principal.userId },
+        request,
+        workspaceId,
+        target: { type: 'incident', id: incidentId },
+        summary: { commentId: row.id, length: input.data.text.length },
+      });
+      return row;
+    });
+    return toComment(created);
+  }
+
   private async load(workspaceId: string, incidentId: string): Promise<IncidentDetail> {
     const row = isUuid(incidentId)
       ? await this.prisma.incident.findFirst({
@@ -335,6 +438,11 @@ export class IncidentsController {
                 createdAt: true,
                 actor: { select: { user: { select: { displayName: true } } } },
               },
+            },
+            comments: {
+              orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+              take: DETAIL_ROWS,
+              select: commentSelect,
             },
           },
         })
@@ -401,6 +509,7 @@ export class IncidentsController {
       relatedRuns,
       evidence,
       history,
+      comments: row.comments.map(toComment),
     };
   }
 }

@@ -7,7 +7,7 @@ import {
   qualifiesForIncident,
   type IncidentStatus,
 } from '@datasentinel/contracts';
-import type { Prisma, PrismaClient } from '@datasentinel/db';
+import { enqueueIncidentNotification, type Prisma, type PrismaClient } from '@datasentinel/db';
 
 export type IncidentOutcome = {
   incidentId: string;
@@ -108,7 +108,7 @@ async function attach(
     });
     incidentId = created.id;
     lastFailureAt = observedAt;
-    await tx.incidentEvent.create({
+    const opened = await tx.incidentEvent.create({
       data: {
         workspaceId,
         incidentId,
@@ -117,16 +117,38 @@ async function attach(
         toStatus: 'open',
         details: { checkRunId, ruleId: run.rule.id },
       },
+      select: { id: true },
+    });
+    // Written with the event it announces (D-86).
+    await enqueueIncidentNotification(tx, {
+      workspaceId,
+      incidentId,
+      incidentEventId: opened.id,
+      kind: 'incident_opened',
+      datasetId: run.rule.datasetId,
+      assignedMembershipId: null,
+      actorMembershipId: null,
+      payload: {
+        title: `${run.rule.name} failed on ${run.rule.dataset.name}`,
+        severity: run.rule.severity,
+        datasetName: run.rule.dataset.name,
+      },
     });
   } else {
     incidentId = latest.id;
     lastFailureAt = latest.lastFailureAt;
     if (decision === 'reopen') {
-      await tx.incident.update({
+      const reopened = await tx.incident.update({
         where: { id: incidentId },
         data: { status: 'reopened', resolvedAt: null },
+        select: {
+          title: true,
+          severity: true,
+          assignedMembershipId: true,
+          dataset: { select: { name: true } },
+        },
       });
-      await tx.incidentEvent.create({
+      const event = await tx.incidentEvent.create({
         data: {
           workspaceId,
           incidentId,
@@ -135,6 +157,21 @@ async function attach(
           fromStatus: 'resolved',
           toStatus: 'reopened',
           details: { reason: 'repeat_failure', automatic: true, checkRunId },
+        },
+        select: { id: true },
+      });
+      await enqueueIncidentNotification(tx, {
+        workspaceId,
+        incidentId,
+        incidentEventId: event.id,
+        kind: 'incident_reopened',
+        datasetId: run.rule.datasetId,
+        assignedMembershipId: reopened.assignedMembershipId,
+        actorMembershipId: null,
+        payload: {
+          title: reopened.title,
+          severity: reopened.severity,
+          datasetName: reopened.dataset.name,
         },
       });
     }

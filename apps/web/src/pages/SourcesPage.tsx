@@ -6,7 +6,8 @@ import { DataTable, type Column } from '../components/DataTable.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
-import { canEdit, lifecycleLabel, sourceTypeLabel } from './labels.ts';
+import { IntegrationTokensPanel } from '../settings/IntegrationTokensPanel.tsx';
+import { canArchive, canEdit, lifecycleLabel, sourceTypeLabel } from './labels.ts';
 import { AddSource } from './AddSource.tsx';
 import { LifecycleActions } from './LifecycleActions.tsx';
 import { RegisterTableDialog } from './RegisterTableDialog.tsx';
@@ -156,6 +157,21 @@ export function SourcesPage() {
           }
         />
       )}
+      {workspace !== undefined &&
+        canArchive(workspace.role) &&
+        sources.status === 'ready' &&
+        sources.data
+          .filter((s) => s.type === 'pipeline_event')
+          .map((s) => (
+            <div key={s.id}>
+              <h3>{s.name}</h3>
+              <IntegrationTokensPanel
+                workspaceId={workspace.workspaceId}
+                sourceId={s.id}
+                archived={s.status === 'archived'}
+              />
+            </div>
+          ))}
       {rotating !== null && workspace !== undefined && (
         <RotateLoginDialog
           workspaceId={workspace.workspaceId}

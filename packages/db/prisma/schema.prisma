@@ -89,17 +89,24 @@ model Session {
 }
 
 model Workspace {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String
-  slug      String   @unique
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  name                  String
+  slug                  String   @unique
   /// IANA time zone for schedule display; stored times stay UTC.
-  timezone  String   @default("UTC")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  timezone              String   @default("UTC")
+  /// The workspace opted in to AI investigation (D-99); off by default.
+  aiEnabled             Boolean  @default(false) @map("ai_enabled")
+  /// Whoever proposed an action cannot approve it (D-116); on by default.
+  requireSecondApprover Boolean  @default(true) @map("require_second_approver")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  memberships Membership[]
-  sources     DataSource[]
-  invitations Invitation[]
+  memberships  Membership[]
+  sources      DataSource[]
+  invitations  Invitation[]
+  destinations Destination[]
+  aiUsage      AiUsageDaily[]
+  documents    Document[]
 
   @@map("workspaces")
 }
@@ -118,17 +125,19 @@ model Membership {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ownedSources      DataSource[]
-  ownedDatasets     Dataset[]
-  invitationsSent   Invitation[]
-  uploadsCreated    Upload[]
-  connectionTests   ConnectionTest[]
-  rulesCreated      QualityRule[]
-  schedulesCreated  Schedule[]
-  integrationTokens IntegrationToken[]
-  incidentsAssigned Incident[]
-  incidentEvents    IncidentEvent[]
-  ruleRevisions     RuleRevision[]
+  ownedSources          DataSource[]
+  ownedDatasets         Dataset[]
+  invitationsSent       Invitation[]
+  uploadsCreated        Upload[]
+  connectionTests       ConnectionTest[]
+  rulesCreated          QualityRule[]
+  schedulesCreated      Schedule[]
+  integrationTokens     IntegrationToken[]
+  incidentsAssigned     Incident[]
+  incidentEvents        IncidentEvent[]
+  incidentComments      IncidentComment[]
+  notificationsReceived NotificationOutbox[]
+  ruleRevisions         RuleRevision[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -630,6 +639,7 @@ model IntegrationToken {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   lastUsedAt            DateTime? @map("last_used_at") @db.Timestamptz(3)
   revokedAt             DateTime? @map("revoked_at") @db.Timestamptz(3)
+  expiresAt             DateTime? @map("expires_at") @db.Timestamptz(3)
 
   source    DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
   createdBy Membership? @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
@@ -711,11 +721,15 @@ model Incident {
   resolutionNote       String?        @map("resolution_note")
   updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  dataset  Dataset         @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
-  rule     QualityRule     @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
-  assignee Membership?     @relation(fields: [workspaceId, assignedMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
-  events   IncidentEvent[]
-  evidence Evidence[]
+  dataset        Dataset               @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  rule           QualityRule           @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  assignee       Membership?           @relation(fields: [workspaceId, assignedMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  events         IncidentEvent[]
+  evidence       Evidence[]
+  comments       IncidentComment[]
+  investigations InvestigationReport[]
+  actions        ActionProposal[]
+  notifications  NotificationOutbox[]
 
   @@unique([workspaceId, id])
   @@index([workspaceId, status, openedAt])
@@ -739,8 +753,9 @@ model IncidentEvent {
   details           Json            @default("{}")
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  incident Incident    @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
-  actor    Membership? @relation(fields: [workspaceId, actorMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  notifications NotificationOutbox[]
+  incident      Incident             @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  actor         Membership?          @relation(fields: [workspaceId, actorMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([workspaceId, incidentId, createdAt])
   @@map("incident_events")
@@ -766,4 +781,321 @@ model Evidence {
   @@unique([incidentId, kind, referenceId])
   @@index([workspaceId, incidentId])
   @@map("evidence")
+}
+
+/// A note on an incident (D-85). Comments are never edited: a trigger in the
+/// migration refuses updates, so the record of who said what stays true.
+model IncidentComment {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  workspaceId        String   @map("workspace_id") @db.Uuid
+  incidentId         String   @map("incident_id") @db.Uuid
+  authorMembershipId String?  @map("author_membership_id") @db.Uuid
+  /// Plain text; shown as text, never as markup.
+  text               String
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  incident Incident    @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  author   Membership? @relation(fields: [workspaceId, authorMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspaceId, incidentId, createdAt])
+  @@map("incident_comments")
+}
+
+/// Delivery state of an outbox notification (D-86).
+enum OutboxStatus {
+  pending
+  sent
+  failed
+  suppressed
+}
+
+/// A notification waiting to be delivered (D-86), written in the same
+/// transaction as the incident event it announces, so a change can never
+/// happen without its notification. Delivery to destinations is Phase K.
+/// One row per (event, recipient): writing it again changes nothing.
+model NotificationOutbox {
+  id                    String       @id @default(uuid(7)) @db.Uuid
+  workspaceId           String       @map("workspace_id") @db.Uuid
+  incidentId            String       @map("incident_id") @db.Uuid
+  incidentEventId       String       @map("incident_event_id") @db.Uuid
+  recipientMembershipId String       @map("recipient_membership_id") @db.Uuid
+  /// incident_opened, incident_reopened, or incident_assigned.
+  kind                  String
+  status                OutboxStatus @default(pending)
+  attempts              Int          @default(0)
+  nextAttemptAt         DateTime     @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  /// Safe values only: title, severity, dataset name. Never secrets.
+  payload               Json         @default("{}")
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt                DateTime?    @map("sent_at") @db.Timestamptz(3)
+
+  incident  Incident      @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  event     IncidentEvent @relation(fields: [incidentEventId], references: [id], onDelete: Cascade)
+  recipient Membership    @relation(fields: [workspaceId, recipientMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([incidentEventId, recipientMembershipId])
+  @@index([status, nextAttemptAt])
+  @@index([workspaceId, incidentId])
+  @@map("notification_outbox")
+}
+
+/// Kinds of alert destination (D-88).
+enum DestinationType {
+  email
+  slack
+  webhook
+  github
+  n8n
+}
+
+/// Where incident notifications are delivered (D-88). Non-secret settings
+/// (email recipients, webhook address) are in `settings`; the Slack URL or
+/// webhook signing secret is sealed in `ciphertext` and never serialized.
+model Destination {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  workspaceId     String          @map("workspace_id") @db.Uuid
+  name            String
+  type            DestinationType
+  status          LifecycleStatus @default(active)
+  /// Subset of the outbox notification kinds this destination receives.
+  events          String[]
+  settings        Json            @default("{}")
+  ciphertext      Bytes?
+  keyVersion      Int?            @map("key_version")
+  secretRotatedAt DateTime?       @map("secret_rotated_at") @db.Timestamptz(3)
+  archivedAt      DateTime?       @map("archived_at") @db.Timestamptz(3)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  workspace  Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([workspaceId, name])
+  @@unique([workspaceId, id])
+  @@map("destinations")
+}
+
+/// One attempt-tracked message to one destination (D-89). Created when the
+/// outbox is fanned out, one per (incident event, destination), so writing it
+/// again changes nothing. `lastError` is a short reason code, never a
+/// provider response body.
+model NotificationDelivery {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  workspaceId     String       @map("workspace_id") @db.Uuid
+  incidentId      String       @map("incident_id") @db.Uuid
+  incidentEventId String       @map("incident_event_id") @db.Uuid
+  destinationId   String       @map("destination_id") @db.Uuid
+  kind            String
+  status          OutboxStatus @default(pending)
+  attempts        Int          @default(0)
+  nextAttemptAt   DateTime     @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lastError       String?      @map("last_error")
+  /// Safe values only: title, severity, dataset name. Never secrets or rows.
+  payload         Json         @default("{}")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt          DateTime?    @map("sent_at") @db.Timestamptz(3)
+
+  destination Destination @relation(fields: [workspaceId, destinationId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([incidentEventId, destinationId])
+  @@index([status, nextAttemptAt])
+  @@index([workspaceId, incidentId])
+  @@map("notification_deliveries")
+}
+
+/// Tokens a workspace has used with the AI provider on one UTC day (D-101).
+/// Reserved before a call and settled after, so the daily budget holds even
+/// when calls run at the same time.
+model AiUsageDaily {
+  workspaceId String   @map("workspace_id") @db.Uuid
+  day         DateTime @db.Date
+  tokens      Int      @default(0)
+  calls       Int      @default(0)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, day])
+  @@map("ai_usage_daily")
+}
+
+/// Format of an uploaded pipeline document (D-103).
+enum DocumentFormat {
+  text
+  markdown
+}
+
+/// Pipeline documentation, read as text only (D-103). `contentHash` is the
+/// SHA-256 of the cleaned text; the migration makes it unique among active
+/// documents of a workspace so the same file is not stored twice.
+model Document {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  workspaceId String          @map("workspace_id") @db.Uuid
+  /// The pipeline source it describes, checked by the API.
+  sourceId    String?         @map("source_id") @db.Uuid
+  name        String
+  format      DocumentFormat
+  sizeChars   Int             @map("size_chars")
+  chunkCount  Int             @map("chunk_count")
+  contentHash String          @map("content_hash")
+  status      LifecycleStatus @default(active)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  archivedAt  DateTime?       @map("archived_at") @db.Timestamptz(3)
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks    DocumentChunk[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, status, createdAt])
+  @@map("documents")
+}
+
+/// A searchable piece of a document with where it came from (D-104). The
+/// `search` column is generated by the database (see the migration).
+model DocumentChunk {
+  id           String                   @id @default(uuid(7)) @db.Uuid
+  workspaceId  String                   @map("workspace_id") @db.Uuid
+  documentId   String                   @map("document_id") @db.Uuid
+  ordinal      Int
+  sectionTitle String?                  @map("section_title")
+  /// Heading path such as "Setup > Credentials".
+  sectionPath  String?                  @map("section_path")
+  startLine    Int                      @map("start_line")
+  endLine      Int                      @map("end_line")
+  text         String
+  search       Unsupported("tsvector")?
+
+  document Document @relation(fields: [workspaceId, documentId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([documentId, ordinal])
+  @@index([workspaceId, documentId])
+  @@index([search], map: "document_chunks_search_idx", type: Gin)
+  @@map("document_chunks")
+}
+
+enum InvestigationStatus {
+  pending
+  ready
+  failed
+}
+
+/// One AI investigation report version for an incident (D-108). Created
+/// pending by the API, finished by the worker; once ready or failed it never
+/// changes (a trigger refuses it). `report` is the validated JSON.
+model InvestigationReport {
+  id                      String              @id @default(uuid(7)) @db.Uuid
+  workspaceId             String              @map("workspace_id") @db.Uuid
+  incidentId              String              @map("incident_id") @db.Uuid
+  version                 Int
+  status                  InvestigationStatus @default(pending)
+  /// Short code when failed; never provider text.
+  failureCode             String?             @map("failure_code")
+  report                  Json?
+  /// Evidence the report cites, for traceability.
+  evidenceIds             String[]            @default([]) @map("evidence_ids") @db.Uuid
+  schemaVersion           Int                 @map("schema_version")
+  templateVersion         Int                 @map("template_version")
+  providerName            String?             @map("provider_name")
+  model                   String?
+  excerptCount            Int                 @default(0) @map("excerpt_count")
+  /// How much was scrubbed, by kind. Counts only.
+  redactions              Json                @default("{}")
+  requestedByMembershipId String?             @map("requested_by_membership_id") @db.Uuid
+  /// Worker bookkeeping for claiming (D-108).
+  attempts                Int                 @default(0)
+  leaseUntil              DateTime?           @map("lease_until") @db.Timestamptz(3)
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt             DateTime?           @map("completed_at") @db.Timestamptz(3)
+
+  incident Incident                @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  feedback InvestigationFeedback[]
+
+  @@unique([incidentId, version])
+  @@unique([workspaceId, id])
+  @@index([workspaceId, incidentId, createdAt])
+  @@index([status, leaseUntil])
+  @@map("investigation_reports")
+}
+
+/// A member's rating of one report (D-110).
+model InvestigationFeedback {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  workspaceId  String   @map("workspace_id") @db.Uuid
+  reportId     String   @map("report_id") @db.Uuid
+  membershipId String   @map("membership_id") @db.Uuid
+  rating       String
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  report InvestigationReport @relation(fields: [workspaceId, reportId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([reportId, membershipId])
+  @@map("investigation_feedback")
+}
+
+enum ActionStatus {
+  proposed
+  approved
+  rejected
+  expired
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+/// A proposed recovery action (D-113). The payload and its hash are fixed at
+/// proposal time (a trigger refuses changes); an approval binds to that hash
+/// and expires; the worker re-checks everything when it runs (D-118).
+model ActionProposal {
+  id                     String       @id @default(uuid(7)) @db.Uuid
+  workspaceId            String       @map("workspace_id") @db.Uuid
+  incidentId             String       @map("incident_id") @db.Uuid
+  type                   String
+  payload                Json
+  /// SHA-256 hex of the canonical type, workspace, incident, and payload.
+  payloadHash            String       @map("payload_hash")
+  status                 ActionStatus @default(proposed)
+  note                   String?
+  proposedByMembershipId String       @map("proposed_by_membership_id") @db.Uuid
+  decidedByMembershipId  String?      @map("decided_by_membership_id") @db.Uuid
+  decidedAt              DateTime?    @map("decided_at") @db.Timestamptz(3)
+  decisionNote           String?      @map("decision_note")
+  proposalExpiresAt      DateTime     @map("proposal_expires_at") @db.Timestamptz(3)
+  /// The hash the approver saw, and when the approval stops being valid.
+  approvedPayloadHash    String?      @map("approved_payload_hash")
+  approvalExpiresAt      DateTime?    @map("approval_expires_at") @db.Timestamptz(3)
+  attempts               Int          @default(0)
+  nextAttemptAt          DateTime?    @map("next_attempt_at") @db.Timestamptz(3)
+  leaseUntil             DateTime?    @map("lease_until") @db.Timestamptz(3)
+  failureCode            String?      @map("failure_code")
+  /// Safe result ids only (a check run, a delivery, an upload).
+  output                 Json?
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  finishedAt             DateTime?    @map("finished_at") @db.Timestamptz(3)
+
+  incident Incident      @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  events   ActionEvent[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, incidentId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("action_proposals")
+}
+
+/// Append-only log of an action's life (D-117): who did what, when, with safe
+/// data only. A trigger refuses updates.
+model ActionEvent {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  workspaceId       String   @map("workspace_id") @db.Uuid
+  actionId          String   @map("action_id") @db.Uuid
+  type              String
+  actorType         String   @map("actor_type")
+  actorMembershipId String?  @map("actor_membership_id") @db.Uuid
+  data              Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  action ActionProposal @relation(fields: [workspaceId, actionId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@index([workspaceId, actionId, createdAt])
+  @@map("action_events")
 }

@@ -1,6 +1,7 @@
 import type { ServerEnv } from '@datasentinel/config';
 import {
   credentialContext,
+  destinationContext,
   keyRing,
   openSecret,
   sealSecret,
@@ -59,6 +60,36 @@ export async function rewrapCredentials(
     });
     rewrapped += changed.count;
   }
+  // Alert destination secrets follow the same key rotation (D-94).
+  const destinations = await prisma.destination.findMany({
+    where: {
+      ciphertext: { not: null },
+      keyVersion: { not: ring.version },
+      status: { not: 'archived' },
+    },
+    select: { id: true, workspaceId: true, ciphertext: true, keyVersion: true },
+  });
+  for (const row of destinations) {
+    if (row.ciphertext === null || row.keyVersion === null) continue;
+    const context = destinationContext(row.workspaceId, row.id);
+    let sealed;
+    try {
+      const value = openSecret(
+        ring,
+        { ciphertext: Buffer.from(row.ciphertext), keyVersion: row.keyVersion },
+        context,
+      );
+      sealed = sealSecret(ring, value, context);
+    } catch {
+      failed += 1;
+      continue;
+    }
+    const changed = await prisma.destination.updateMany({
+      where: { id: row.id, keyVersion: row.keyVersion, status: { not: 'archived' } },
+      data: { ciphertext: new Uint8Array(sealed.ciphertext), keyVersion: sealed.keyVersion },
+    });
+    rewrapped += changed.count;
+  }
   await recordAudit(prisma, {
     action: 'credentials.rewrapped',
     actor: { type: 'system' },
@@ -71,6 +102,8 @@ export async function rewrapCredentials(
 export interface SourceSecurity {
   ring: KeyRing;
   networkPolicy: NetworkPolicy;
+  /** Optional alert destinations enabled in this deployment (D-96). */
+  features: { github: boolean; n8n: boolean };
 }
 
 export const SOURCE_SECURITY = Symbol('SOURCE_SECURITY');
@@ -82,7 +115,11 @@ export function lazySourceSecurity(load: () => ServerEnv): SourceSecurity {
   const get = () =>
     (loaded ??= (() => {
       const env = load();
-      return { ring: credentialKeyRing(env), networkPolicy: env.SOURCE_NETWORK_POLICY };
+      return {
+        ring: credentialKeyRing(env),
+        networkPolicy: env.SOURCE_NETWORK_POLICY,
+        features: { github: env.FEATURE_DESTINATION_GITHUB, n8n: env.FEATURE_DESTINATION_N8N },
+      };
     })());
   return {
     get ring() {
@@ -90,6 +127,9 @@ export function lazySourceSecurity(load: () => ServerEnv): SourceSecurity {
     },
     get networkPolicy() {
       return get().networkPolicy;
+    },
+    get features() {
+      return get().features;
     },
   };
 }

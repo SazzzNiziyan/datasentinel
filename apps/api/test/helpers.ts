@@ -12,6 +12,7 @@ import { UPLOAD_STORAGE, type StoredObject, type UploadStorage } from '../src/st
 import { UPLOAD_QUEUE, type UploadQueue } from '../src/uploads/upload-queue.js';
 import { keyRing } from '@datasentinel/connectors';
 import type { DiscoveryOutcome } from '@datasentinel/contracts';
+import { AI_CONFIG, type AiConfig } from '../src/ai/ai-config.js';
 import { SOURCE_SECURITY } from '../src/credentials/credentials.js';
 import { SOURCE_JOBS, type SourceJobs } from '../src/sources/source-jobs.js';
 import { QUEUE_OPS, type QueueOps } from '../src/ops/queue-ops.js';
@@ -94,6 +95,10 @@ export async function startApi(
     queue?: UploadQueue;
     sourceJobs?: SourceJobs;
     queueOps?: QueueOps;
+    /** Optional destination types; both on unless a test says otherwise. */
+    features?: { github: boolean; n8n: boolean };
+    /** AI availability; available with a named provider unless a test says otherwise. */
+    ai?: AiConfig;
   } = {},
 ): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
@@ -119,8 +124,21 @@ export async function startApi(
     .useValue(fakes.sourceJobs ?? new RecordingSourceJobs())
     .overrideProvider(QUEUE_OPS)
     .useValue(fakes.queueOps ?? { list: () => Promise.resolve([]) })
+    .overrideProvider(AI_CONFIG)
+    .useValue(
+      fakes.ai ?? {
+        available: true,
+        provider: 'Test Provider',
+        region: 'eu-test-1',
+        retention: 'No retention (test)',
+      },
+    )
     .overrideProvider(SOURCE_SECURITY)
-    .useValue({ ring: testKeyRing, networkPolicy: 'public-only' })
+    .useValue({
+      ring: testKeyRing,
+      networkPolicy: 'public-only',
+      features: fakes.features ?? { github: true, n8n: true },
+    })
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureHttp(app, WEB);

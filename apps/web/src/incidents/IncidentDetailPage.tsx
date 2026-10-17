@@ -20,12 +20,15 @@ import { StatusMark } from '../components/StatusMark.tsx';
 import { Timeline } from '../components/Timeline.tsx';
 import { formatTime } from '../format.ts';
 import '../pages/DatasetDetailPage.css';
-import { canEdit } from '../pages/labels.ts';
+import { canComment, canEdit } from '../pages/labels.ts';
 import { describeRun } from '../rules/describeRun.ts';
 import { ruleTypeLabels } from '../rules/ruleForm.ts';
 import { pipelineRunDisplay } from '../runs/runDisplay.ts';
 import { IncidentActions } from './IncidentActions.tsx';
+import { IncidentComments } from './IncidentComments.tsx';
 import { incidentStatusLabel, incidentStatusTone } from './incidentDisplay.ts';
+import { InvestigationPanel } from './InvestigationPanel.tsx';
+import { RecoveryActionsPanel } from './RecoveryActionsPanel.tsx';
 
 const kindLabels: Record<string, string> = {
   check_run: 'Failed check',
@@ -125,7 +128,12 @@ const runColumns: Column<IncidentRelatedRun>[] = [
   { key: 'timing', header: 'Timing', cell: (r) => timing(r.distanceMinutes) },
 ];
 
-const evidenceColumns: Column<IncidentEvidenceItem>[] = [
+const evidenceColumns = (all: IncidentEvidenceItem[]): Column<IncidentEvidenceItem>[] => [
+  {
+    key: 'ref',
+    header: 'Ref',
+    cell: (e) => <span id={`evidence-${e.id}`}>{all.indexOf(e) + 1}</span>,
+  },
   { key: 'kind', header: 'Kind', cell: (e) => kindLabels[e.kind] ?? e.kind },
   { key: 'observed', header: 'Observed', cell: (e) => formatTime(e.observedAt) },
   { key: 'summary', header: 'Summary', cell: (e) => summarize(e.summary) },
@@ -287,7 +295,7 @@ export function IncidentDetailPage() {
         </h2>
         <DataTable
           caption="Evidence for this incident"
-          columns={evidenceColumns}
+          columns={evidenceColumns(i.evidence)}
           rows={i.evidence}
           rowKey={(e) => e.id}
           empty={<p>No evidence is attached yet.</p>}
@@ -307,6 +315,29 @@ export function IncidentDetailPage() {
           }))}
         />
       </section>
+      {workspace !== undefined && (
+        <InvestigationPanel
+          workspaceId={workspace.workspaceId}
+          incidentId={i.id}
+          role={workspace.role}
+          evidence={i.evidence}
+        />
+      )}
+      {workspace !== undefined && (
+        <RecoveryActionsPanel
+          workspaceId={workspace.workspaceId}
+          incidentId={i.id}
+          role={workspace.role}
+        />
+      )}
+      {workspace !== undefined && (
+        <IncidentComments
+          workspaceId={workspace.workspaceId}
+          incident={i}
+          canPost={canComment(workspace.role)}
+          onUpdated={setUpdated}
+        />
+      )}
     </PageFrame>
   );
 }

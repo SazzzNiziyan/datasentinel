@@ -32,7 +32,14 @@ import { RelatedRunsController } from './pipeline-runs/related-runs.controller.j
 import { ConnectionTestsController } from './sources/connection-tests.controller.js';
 import { BullSourceJobs, SOURCE_JOBS } from './sources/source-jobs.js';
 import { BullQueueOps, QUEUE_OPS } from './ops/queue-ops.js';
+import { MetricsController } from './ops/metrics.controller.js';
 import { QueueJobsController } from './ops/queue-jobs.controller.js';
+import { ActionsController } from './actions/actions.controller.js';
+import { InvestigationsController } from './investigations/investigations.controller.js';
+import { AI_CONFIG, lazyAiConfig } from './ai/ai-config.js';
+import { AiSettingsController } from './ai/ai-settings.controller.js';
+import { DocumentsController } from './documents/documents.controller.js';
+import { DestinationsController } from './destinations/destinations.controller.js';
 import { IncidentsController } from './incidents/incidents.controller.js';
 import { SourcesController } from './sources/sources.controller.js';
 import { S3UploadStorage, UPLOAD_STORAGE } from './storage/storage.js';
@@ -62,7 +69,13 @@ export class AppModule {
         IntegrationTokensController,
         PipelineEventsController,
         PipelineRunsController,
+        MetricsController,
         QueueJobsController,
+        ActionsController,
+        AiSettingsController,
+        InvestigationsController,
+        DestinationsController,
+        DocumentsController,
         IncidentsController,
         RelatedRunsController,
         UploadsController,
@@ -90,6 +103,7 @@ export class AppModule {
           // Reads the environment on first use, like the storage provider.
           useFactory: () => lazySourceSecurity(loadApiEnv),
         },
+        { provide: AI_CONFIG, useFactory: () => lazyAiConfig(loadApiEnv) },
         { provide: UPLOAD_QUEUE, useFactory: () => new BullUploadQueue(options.redisUrl) },
         { provide: QUEUE_OPS, useFactory: () => new BullQueueOps(options.redisUrl) },
         {

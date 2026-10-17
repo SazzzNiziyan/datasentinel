@@ -73,6 +73,13 @@ const previousKeys = z
     return keys;
   });
 
+const optionalText = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .transform((v) => (v === '' ? undefined : v));
+
 /** Settings every server process (API and worker) needs. */
 const serverEnv = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
@@ -95,6 +102,20 @@ const serverEnv = z.object({
   /** Where data sources may point (D-48). Development env files set
    * allow-private so a local demo database works. */
   SOURCE_NETWORK_POLICY: z.enum(['public-only', 'allow-private']).default('public-only'),
+
+  /** Optional alert destinations, off until enabled (D-96). */
+  FEATURE_DESTINATION_GITHUB: z.stringbool().default(false),
+  FEATURE_DESTINATION_N8N: z.stringbool().default(false),
+
+  /** AI investigation (D-99): off unless the flag is on AND the deployer has
+   * said which provider, in which region, with what retention, so the
+   * disclosure shown to workspace admins is never empty. */
+  FEATURE_AI: z.stringbool().default(false),
+  AI_PROVIDER_NAME: optionalText,
+  AI_PROVIDER_REGION: optionalText,
+  AI_RETENTION_NOTE: optionalText,
+  /** Most tokens (input plus output) one workspace may use a day (UTC). */
+  AI_DAILY_TOKEN_BUDGET: wholeNumber(1000, 100_000_000).default(200_000),
 });
 
 /** Previous keys must be older than the current one and not reuse it. Runs
@@ -122,7 +143,10 @@ function checkPreviousKeys(
 }
 
 /** The worker's settings, with the cross-field key checks. */
-const workerEnv = serverEnv.superRefine(checkPreviousKeys);
+const workerEnv = serverEnv
+  // Where links in notifications point (D-89); the API process requires it.
+  .extend({ WEB_ORIGIN: origin.optional() })
+  .superRefine(checkPreviousKeys);
 
 const optional = z
   .string()

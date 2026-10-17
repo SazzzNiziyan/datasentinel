@@ -192,6 +192,8 @@ export type IncidentDetail = IncidentListItem & {
   evidence: IncidentEvidenceItem[];
   /** Oldest first. */
   history: IncidentHistoryItem[];
+  /** Oldest first. */
+  comments: IncidentCommentItem[];
 };
 
 /** Which status changes a person may make (D-84). Open and reopened are
@@ -248,3 +250,20 @@ export const UpdateIncidentRequest = z
     }
   });
 export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequest>;
+
+export const INCIDENT_COMMENT_MAX = 2000;
+
+/** POST …/incidents/{incidentId}/comments (analyst or above, audited,
+ * D-85). Plain text; comments cannot be edited or deleted. */
+export const CreateIncidentCommentRequest = z.strictObject({
+  text: z.string().trim().min(1).max(INCIDENT_COMMENT_MAX),
+});
+export type CreateIncidentCommentRequest = z.infer<typeof CreateIncidentCommentRequest>;
+
+export type IncidentCommentItem = {
+  id: string;
+  authorMembershipId: string | null;
+  authorName: string | null;
+  text: string;
+  createdAt: string;
+};

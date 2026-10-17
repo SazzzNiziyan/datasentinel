@@ -89,6 +89,7 @@ const incident: IncidentDetail = {
       createdAt: '2026-10-17T10:00:00.000Z',
     },
   ],
+  comments: [],
 };
 
 function renderAt(path: string) {

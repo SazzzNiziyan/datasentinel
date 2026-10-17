@@ -70,6 +70,7 @@ export class IntegrationTokenGuard implements CanActivate {
         sourceId: true,
         secretHash: true,
         revokedAt: true,
+        expiresAt: true,
         lastUsedAt: true,
       },
     });
@@ -77,6 +78,7 @@ export class IntegrationTokenGuard implements CanActivate {
     if (
       row === null ||
       row.revokedAt !== null ||
+      (row.expiresAt !== null && row.expiresAt.getTime() <= Date.now()) ||
       !timingSafeEqual(Buffer.from(row.secretHash), given)
     ) {
       throw invalid();

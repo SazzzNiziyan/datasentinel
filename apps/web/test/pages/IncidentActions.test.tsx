@@ -35,6 +35,7 @@ const make = (status: IncidentStatus, extra: Partial<IncidentDetail> = {}): Inci
   relatedRuns: [],
   evidence: [],
   history: [],
+  comments: [],
   ...extra,
 });
 

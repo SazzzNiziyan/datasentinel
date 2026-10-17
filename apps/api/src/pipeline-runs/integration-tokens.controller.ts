@@ -34,6 +34,7 @@ const tokenSelect = {
   createdAt: true,
   lastUsedAt: true,
   revokedAt: true,
+  expiresAt: true,
 } as const;
 
 const toSummary = (t: {
@@ -42,12 +43,14 @@ const toSummary = (t: {
   createdAt: Date;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
+  expiresAt: Date | null;
 }): IntegrationTokenSummary => ({
   id: t.id,
   name: t.name,
   createdAt: t.createdAt.toISOString(),
   lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
   revokedAt: t.revokedAt?.toISOString() ?? null,
+  expiresAt: t.expiresAt?.toISOString() ?? null,
 });
 
 /** Tokens external jobs use to report pipeline runs (D-73, D-74). They are
@@ -109,6 +112,7 @@ export class IntegrationTokensController {
           name: input.data.name,
           secretHash: new Uint8Array(hash),
           createdByMembershipId: membershipId,
+          expiresAt: new Date(Date.now() + input.data.expiresInDays * 86_400_000),
         },
         select: tokenSelect,
       });
@@ -118,7 +122,7 @@ export class IntegrationTokensController {
         request,
         workspaceId,
         target: { type: 'integration_token', id },
-        summary: { after: { sourceId } },
+        summary: { after: { sourceId, expiresInDays: input.data.expiresInDays } },
       });
       return created;
     });

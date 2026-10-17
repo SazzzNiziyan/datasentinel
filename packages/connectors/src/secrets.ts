@@ -40,6 +40,10 @@ export interface SealedSecret {
 export const credentialContext = (workspaceId: string, sourceId: string): string =>
   `datasentinel/source-credential/v1/${workspaceId}/${sourceId}`;
 
+/** The additional data an alert destination's secret is bound to (D-88). */
+export const destinationContext = (workspaceId: string, destinationId: string): string =>
+  `datasentinel/destination-secret/v1/${workspaceId}/${destinationId}`;
+
 /** A secret that cannot be opened. Says why, never what. */
 export class SecretUnavailable extends Error {
   readonly reason: 'unknown_key_version' | 'invalid';

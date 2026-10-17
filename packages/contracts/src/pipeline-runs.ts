@@ -127,8 +127,12 @@ export type PipelineRunSummary = {
 };
 
 /** POST …/sources/{sourceId}/integration-tokens (admin+, audited, D-74). */
+/** Tokens expire (D-95): one year unless the admin chooses sooner. */
+export const INTEGRATION_TOKEN_MAX_DAYS = 365;
+
 export const CreateIntegrationTokenRequest = z.strictObject({
   name: z.string().trim().min(1).max(100),
+  expiresInDays: z.int().min(1).max(INTEGRATION_TOKEN_MAX_DAYS).default(INTEGRATION_TOKEN_MAX_DAYS),
 });
 
 export type IntegrationTokenSummary = {
@@ -137,6 +141,8 @@ export type IntegrationTokenSummary = {
   createdAt: string;
   lastUsedAt: string | null;
   revokedAt: string | null;
+  /** Null only for tokens issued before expiry existed. */
+  expiresAt: string | null;
 };
 
 /** Returned once, at creation; the token cannot be read again. */

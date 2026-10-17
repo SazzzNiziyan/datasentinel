@@ -174,4 +174,55 @@ describe('pipeline runs API', { skip }, () => {
     }
     assert.equal(last, 429);
   });
+
+  it('expires tokens after a year by default, sooner on request, and refuses them after', async () => {
+    const day = 86_400_000;
+    const t = await tenant();
+    const near = (value: unknown, ms: number) =>
+      Math.abs(new Date(String(value)).getTime() - (Date.now() + ms)) < 60_000;
+    const standard = await t.call('POST', t.tokens, { name: 'default' });
+    assert.ok(near(standard.body.expiresAt, 365 * day));
+    const short = await t.call('POST', t.tokens, { name: 'short', expiresInDays: 30 });
+    assert.ok(near(short.body.expiresAt, 30 * day));
+    for (const bad of [0, 366, 1.5, '30']) {
+      assert.equal((await t.call('POST', t.tokens, { name: 'x', expiresInDays: bad })).status, 400);
+    }
+    const listed = await t.call('GET', t.tokens);
+    assert.ok(JSON.stringify(listed.body).includes('expiresAt'));
+
+    const token = String(short.body.token);
+    assert.equal((await job(token, 'POST', '', event())).status, 201);
+    await prisma.integrationToken.update({
+      where: { id: String(short.body.id) },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    const expired = await job(token, 'POST', '', event({ externalRunId: 'later' }));
+    const wrong = await job('dsp_nope', 'POST', '', event());
+    assert.equal(expired.status, 401);
+    // An expired token looks exactly like a wrong one: nothing to learn from it.
+    const { instance: _a, ...expiredBody } = expired.body;
+    const { instance: _b, ...wrongBody } = wrong.body;
+    assert.deepEqual(expiredBody, wrongBody);
+  });
+
+  it('makes a replayed event harmless: no second run, no step backwards', async () => {
+    const t = await issued();
+    const started = event({ externalRunId: 'replay-1', status: 'running', occurredAt: iso(-2000) });
+    const finished = event({
+      externalRunId: 'replay-1',
+      status: 'succeeded',
+      occurredAt: iso(-1000),
+    });
+    assert.equal((await job(t.token, 'POST', '', started)).status, 201);
+    assert.equal((await job(t.token, 'POST', '', finished)).status, 200);
+    // An attacker or a retrying client sends the captured requests again.
+    for (const captured of [started, finished, started, finished]) {
+      assert.equal((await job(t.token, 'POST', '', captured)).status, 200);
+    }
+    const runs = await prisma.pipelineRun.findMany({
+      where: { workspaceId: t.workspaceId, externalRunId: 'replay-1' },
+    });
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0]?.status, 'succeeded');
+  });
 });
