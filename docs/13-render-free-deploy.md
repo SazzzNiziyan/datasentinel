@@ -23,7 +23,19 @@ This is a **demo or personal setup, not a production one**. It runs everything i
    - Leave `SMTP_URL`, `EMAIL_FROM`, `AI_API_KEY` empty for now.
 5. After the first deploy, open **Environment** and copy `SECRETS_ENCRYPTION_KEY` to a password manager.
 6. Check `https://<name>.onrender.com/api/health/ready`: it should list database, redis and storage as `up`. The first start applies the database migrations.
-7. Open the address, create an account, and create a workspace.
+7. **Create the first user.** There is no sign-up page (accounts come from invitations, or Google and GitHub sign-in), so run this once on your own machine, from the repository root, after `pnpm --filter @datasentinel/api build`. Use the Neon **direct** connection string, set only for this PowerShell window (do not put it in `.env`):
+
+   ```powershell
+   $env:DATABASE_URL = '<neon direct connection string>'
+   $env:USER_EMAIL = 'you@example.com'
+   $env:USER_NAME = 'Your Name'
+   $env:USER_PASSWORD = '<at least 12 characters>'
+   pnpm --filter @datasentinel/api user:create
+   Remove-Item Env:DATABASE_URL, Env:USER_PASSWORD
+   ```
+
+   It prints "User created". Then sign in at `/sign-in` and create a workspace; you become its owner. Invite other people from Settings.
+
 8. **Keep it awake.** At uptimerobot.com add an HTTP monitor for `https://<name>.onrender.com/api/health/live` every 5 minutes.
 
 ## Turning on email (optional)

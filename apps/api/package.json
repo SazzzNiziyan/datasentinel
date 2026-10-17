@@ -12,6 +12,7 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "eslint .",
     "seed": "node --env-file=env/development.env --env-file-if-exists=../../.env dist/dev/seed.js",
+    "user:create": "node dist/ops/create-user.js",
     "credentials:rewrap": "node --env-file=env/development.env --env-file-if-exists=../../.env dist/ops/rewrap-credentials.js"
   },
   "dependencies": {
