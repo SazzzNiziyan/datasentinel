@@ -3,5 +3,6 @@
 // consumer could not require() this package), relative imports end in .ts.
 export * from './auth.ts';
 export * from './health.ts';
+export * from './invitations.ts';
 export * from './queues.ts';
 export * from './sources.ts';

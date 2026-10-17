@@ -37,6 +37,21 @@ export const CurrentPrincipal = createParamDecorator(
   },
 );
 
+/** The valid session named by the request's cookie header, or null:
+ * not revoked, not expired, and its user is active. */
+export async function findActiveSession(prisma: PrismaClient, cookieHeader: string | undefined) {
+  const token = readCookie(cookieHeader, SESSION_COOKIE);
+  if (token === undefined) return null;
+  return prisma.session.findFirst({
+    where: {
+      tokenHash: hashSessionToken(token),
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+      user: { status: 'active' },
+    },
+  });
+}
+
 /** lastUsedAt is refreshed at most this often, to spare a write per request. */
 const TOUCH_AFTER_MS = 5 * 60 * 1000;
 
@@ -55,19 +70,8 @@ export class SessionGuard implements CanActivate {
     if (isPublic === true) return true;
 
     const req = context.switchToHttp().getRequest<AuthedRequest>();
-    const token = readCookie(req.headers.cookie, SESSION_COOKIE);
     const now = new Date();
-    const session =
-      token === undefined
-        ? null
-        : await this.prisma.session.findFirst({
-            where: {
-              tokenHash: hashSessionToken(token),
-              revokedAt: null,
-              expiresAt: { gt: now },
-              user: { status: 'active' },
-            },
-          });
+    const session = await findActiveSession(this.prisma, req.headers.cookie);
     if (session === null) {
       throw new ProblemException(
         HttpStatus.UNAUTHORIZED,

@@ -145,18 +145,3 @@ export const activity: readonly ActivityEvent[] = [
   { id: 'a3', time: '07:58 UTC', actor: 'Ravi Menon', text: 'Acknowledged INC-1041' },
   { id: 'a4', time: '06:12 UTC', actor: 'Scheduler', text: 'Opened INC-1042 on orders_daily' },
 ];
-
-export interface Member {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-export const members: readonly Member[] = [
-  { id: 'm1', name: 'Lena Fischer', email: 'lena@northwind.example', role: 'Owner' },
-  { id: 'm2', name: 'Ana Kovac', email: 'ana@northwind.example', role: 'Data engineer' },
-  { id: 'm3', name: 'Ravi Menon', email: 'ravi@northwind.example', role: 'Data engineer' },
-  { id: 'm4', name: 'Sam Ortiz', email: 'sam@northwind.example', role: 'Analyst' },
-  { id: 'm5', name: 'Mei Tanaka', email: 'mei@northwind.example', role: 'Viewer' },
-];

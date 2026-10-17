@@ -25,7 +25,6 @@ function bodyRows(caption: string) {
 describe.each([
   ['Overview', <OverviewPage key="o" />],
   ['Incidents', <IncidentsPage key="i" />],
-  ['Workspace settings', <SettingsPage key="w" />],
 ])('%s screen', (title, page) => {
   it('has its title and says the data is sample data', () => {
     renderPage(page);
@@ -74,6 +73,6 @@ describe('Incidents screen', () => {
 describe('Workspace settings screen', () => {
   it('explains that the current role cannot change member roles', () => {
     renderPage(<SettingsPage />);
-    expect(screen.getByRole('heading', { name: "You can't change member roles" })).toBeVisible();
+    expect(screen.getByRole('heading', { name: "You can't manage members" })).toBeVisible();
   });
 });

@@ -16,7 +16,7 @@ import { APP_OPTIONS, type AppOptions } from '../options.js';
 import { ProblemException } from '../problem.js';
 import { AuthService } from './auth.service.js';
 import { Public } from './session.guard.js';
-import { readCookie, SESSION_COOKIE } from './session-token.js';
+import { readCookie, SESSION_COOKIE, sessionCookieOptions } from './session-token.js';
 
 /** POST /auth/sessions signs in; DELETE /auth/sessions/current signs out. */
 // Public: signing in needs no session, and signing out must always work.
@@ -29,8 +29,7 @@ export class AuthController {
     private readonly auth: AuthService,
     @Inject(APP_OPTIONS) options: AppOptions,
   ) {
-    // Not readable by scripts; sent on same-site navigation and requests.
-    this.cookie = { httpOnly: true, sameSite: 'lax', secure: options.secureCookies, path: '/' };
+    this.cookie = sessionCookieOptions(options.secureCookies);
   }
 
   @Post()

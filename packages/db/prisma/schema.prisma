@@ -99,6 +99,7 @@ model Workspace {
 
   memberships Membership[]
   sources     DataSource[]
+  invitations Invitation[]
 
   @@map("workspaces")
 }
@@ -117,8 +118,9 @@ model Membership {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ownedSources  DataSource[]
-  ownedDatasets Dataset[]
+  ownedSources    DataSource[]
+  ownedDatasets   Dataset[]
+  invitationsSent Invitation[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -249,4 +251,26 @@ model Dataset {
   @@unique([workspaceId, sourceId, stableKey])
   @@index([workspaceId, status])
   @@map("datasets")
+}
+
+/// A one-time link to join a workspace (D-06, D-40). Only the token hash is
+/// stored; the link is shown once to the inviting admin.
+model Invitation {
+  id                    String    @id @default(uuid(7)) @db.Uuid
+  workspaceId           String    @map("workspace_id") @db.Uuid
+  /// Lowercase; the accepting account must have this email.
+  email                 String
+  role                  Role
+  tokenHash             String    @unique @map("token_hash")
+  invitedByMembershipId String    @map("invited_by_membership_id") @db.Uuid
+  expiresAt             DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt            DateTime? @map("accepted_at") @db.Timestamptz(3)
+  revokedAt             DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy Membership @relation(fields: [workspaceId, invitedByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspaceId, email])
+  @@map("invitations")
 }

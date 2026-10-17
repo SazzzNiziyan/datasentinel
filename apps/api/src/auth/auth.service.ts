@@ -78,14 +78,20 @@ export class AuthService {
       throw invalidCredentials();
     }
 
+    return this.createSession(user.id, request);
+  }
+
+  /** A new session for a user who just proved who they are (sign-in, or
+   * creating an account from an invitation). */
+  async createSession(userId: string, request: RequestMeta) {
     const token = newSessionToken();
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
     const session = await this.prisma.session.create({
-      data: { userId: user.id, tokenHash: hashSessionToken(token), expiresAt },
+      data: { userId, tokenHash: hashSessionToken(token), expiresAt },
     });
     await recordAudit(this.prisma, {
       action: 'auth.sign_in.succeeded',
-      actor: { type: 'user', id: user.id },
+      actor: { type: 'user', id: userId },
       request,
       target: { type: 'session', id: session.id },
     });

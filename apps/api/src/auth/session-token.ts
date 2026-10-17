@@ -1,3 +1,4 @@
+import type { CookieOptions } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 
 export const SESSION_COOKIE = 'ds_session';
@@ -19,4 +20,9 @@ export function readCookie(header: string | undefined, name: string): string | u
     if (key === name) return value.join('=') || undefined;
   }
   return undefined;
+}
+
+/** The session cookie: not readable by scripts; sent on same-site requests. */
+export function sessionCookieOptions(secure: boolean): CookieOptions {
+  return { httpOnly: true, sameSite: 'lax', secure, path: '/' };
 }

@@ -11,6 +11,7 @@ import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { OverviewPage } from './pages/OverviewPage.tsx';
 import { PendingPage } from './pages/PendingPage.tsx';
 import { SettingsPage } from './pages/SettingsPage.tsx';
+import { InvitePage } from './pages/InvitePage.tsx';
 import { SignInPage } from './pages/SignInPage.tsx';
 import { SourcesPage } from './pages/SourcesPage.tsx';
 
@@ -38,6 +39,7 @@ export function App() {
       <SessionProvider>
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/invite" element={<InvitePage />} />
           <Route
             element={
               <RequireSession>

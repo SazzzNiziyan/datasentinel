@@ -13,6 +13,10 @@ import { PRISMA, PrismaLifecycle } from './db.js';
 import { createDependencyChecks, DEPENDENCY_CHECKS } from './health/dependency-checks.js';
 import { HealthController } from './health/health.controller.js';
 import { loggerParams } from './logging/logging.js';
+import {
+  AcceptInvitationController,
+  InvitationsController,
+} from './workspaces/invitations.controller.js';
 import { MembersController } from './workspaces/members.controller.js';
 import { WorkspaceGuard } from './workspaces/workspace.guard.js';
 import { WorkspacesController } from './workspaces/workspaces.controller.js';
@@ -35,6 +39,8 @@ export class AppModule {
         WorkspacesController,
         MembersController,
         SourcesController,
+        InvitationsController,
+        AcceptInvitationController,
       ],
       providers: [
         { provide: APP_OPTIONS, useValue: options },
