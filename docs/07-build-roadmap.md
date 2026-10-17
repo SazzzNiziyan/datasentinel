@@ -6,10 +6,10 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-18. **Done:** 136 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
+- **Last updated:** 2026-10-18. **Done:** 142 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G, H, and I are complete; Phase J is complete; Phase K is complete; Phase L is complete; Phase M is complete; Phase N is in progress). Decisions D-01 to D-131 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G, H, and I are complete; Phase J is complete; Phase K is complete; Phase L is complete; Phase M is complete; Phase N is in progress). Decisions D-01 to D-132 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -39,10 +39,10 @@ When using `/feature-dev`, use it for the bounded task above. For a visual task,
 - [x] Read the product specification and mark any requirement that is unclear (see spec §9).
 - [x] Decide whether sign-in starts with email/password, an identity provider, or both.
 - [x] Decide the initial workspace roles and whether analysts may acknowledge/comment on incidents.
-- [ ] Decide the first deployment region and hosting provider before production configuration.
-- [ ] Select the production object-storage provider and secret manager.
-- [ ] Select an email provider and decide whether Slack/webhook integrations are enabled at first launch.
-- [ ] Select the LLM provider, model, region, retention controls, and workspace opt-out behavior for product AI reports.
+- [x] Decide the first deployment region and hosting provider before production configuration. (D-04)
+- [x] Select the production object-storage provider and secret manager. (D-05)
+- [x] Select an email provider and decide whether Slack/webhook integrations are enabled at first launch. (D-06)
+- [x] Select the LLM provider, model, region, retention controls, and workspace opt-out behavior for product AI reports. (D-07)
 - [x] Set initial upload limits, source query timeouts, check schedule minimums, and retention defaults. (D-08)
 - [x] Record unresolved choices in a decision log rather than silently guessing.
 
@@ -76,7 +76,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Build static versions of Dashboard, Incidents, Sources, Datasets, and Settings screens using clearly labeled sample data. (D-19; sample values only in `apps/web/src/sample/sampleData.ts`)
 - [x] Check keyboard focus, labels, status text, contrast, and narrow-screen behavior. (D-20; axe-core test on every screen)
   - Include: move focus to the page heading (and announce it) on route change; after choosing a link in the mobile drawer, focus should land on the new page, not the Menu button.
-- [ ] Remove sample data before any screen is presented as connected to live services.
+- [x] Remove sample data before any screen is presented as connected to live services. (D-132)
 
 **Phase gate:** users can navigate a coherent, responsive interface; every state is visibly sample or connected.
 
@@ -117,7 +117,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Define the connector interface and normalized safe error format. (D-35; `packages/connectors`)
 - [x] Add source and dataset metadata models and migrations. (D-36)
 - [x] Add source and dataset list/detail API routes with workspace authorization. (D-37)
-- [ ] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); CSV (D-44) and PostgreSQL (D-47) sources can be added. **Still waiting:** the connection test ("validate") and table choice in Phase G, and schedules in Phase I.
+- [x] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); CSV (D-44) and PostgreSQL (D-47) sources can be added. The connection test, table choice and schedules were completed in later phases. (D-132)
 - [x] Add private object storage configuration and random object keys. (D-38)
 - [x] Add upload initiation and completion endpoints. (D-41)
 - [x] Enforce file-size, row-size, encoding, and content validation limits. (D-08: 50 MB, UTF-8, 1,000 columns, 1 MB rows; D-42)
