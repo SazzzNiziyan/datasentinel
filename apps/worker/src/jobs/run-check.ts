@@ -41,6 +41,7 @@ import { loadPostgresAccess } from './postgres-access.js';
 import { readMeasurements } from './profile-metrics.js';
 import { readSchemaColumns, type SchemaColumn } from './schema-diff.js';
 import type { TestConnectionDeps } from './test-connection.js';
+import { openIncidentForCheck } from '../incidents/open-incident.js';
 
 type LatestUpload = {
   rowCount: number;
@@ -184,7 +185,12 @@ export async function handleRunCheck(
     where: { id: checkRunId, workspaceId, status: 'queued' },
     data: { status: 'running', startedAt: new Date() },
   });
-  if (claimed.count === 0) return;
+  if (claimed.count === 0) {
+    // A repeated delivery of a finished check still makes sure its incident
+    // exists (D-80): attaching is idempotent.
+    await openIncidentForCheck(prisma, workspaceId, checkRunId, now());
+    return;
+  }
   const started = Date.now();
   const finish = (result: Finish) =>
     prisma.checkRun.update({
@@ -228,7 +234,11 @@ export async function handleRunCheck(
     const failure = known ? error : new ConnectorFailure('internal');
     await finish({ status: 'error', error: { ...failure.toJSON() } });
     if (!known) throw error;
+    return;
   }
+  // Outside the try: a problem here must not rewrite a finished check as
+  // an error. The job retries, and the early return above heals it.
+  await openIncidentForCheck(prisma, workspaceId, checkRunId, now());
 }
 
 async function evaluate(

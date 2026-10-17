@@ -1,0 +1,13 @@
+.incident-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.incident-actions label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}

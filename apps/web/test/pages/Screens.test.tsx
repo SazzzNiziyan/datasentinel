@@ -1,9 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { IncidentsPage } from '../../src/pages/IncidentsPage.tsx';
 import { OverviewPage } from '../../src/pages/OverviewPage.tsx';
 import { SettingsPage } from '../../src/pages/SettingsPage.tsx';
 import { WithSession } from '../session.tsx';
@@ -22,13 +20,10 @@ function bodyRows(caption: string) {
   return within(table).getAllByRole('row').slice(1);
 }
 
-describe.each([
-  ['Overview', <OverviewPage key="o" />],
-  ['Incidents', <IncidentsPage key="i" />],
-])('%s screen', (title, page) => {
+describe('Overview screen title', () => {
   it('has its title and says the data is sample data', () => {
-    renderPage(page);
-    expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    renderPage(<OverviewPage />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
     expect(screen.getByText('Sample data. Not connected to live services.')).toBeVisible();
   });
 });
@@ -44,29 +39,6 @@ describe('Overview screen', () => {
     renderPage(<OverviewPage />);
     const timeline = screen.getByRole('list', { name: 'Recent activity' });
     expect(within(timeline).getAllByRole('listitem').length).toBeGreaterThan(0);
-  });
-});
-
-describe('Incidents screen', () => {
-  it('filters by severity', async () => {
-    const user = userEvent.setup();
-    renderPage(<IncidentsPage />);
-    await user.selectOptions(screen.getByLabelText('Severity'), 'Warning');
-    const rows = bodyRows('Incidents');
-    expect(rows.length).toBeGreaterThan(0);
-    for (const row of rows) expect(row).toHaveTextContent('Warning');
-  });
-
-  it('explains an empty result and clears the filters', async () => {
-    const user = userEvent.setup();
-    renderPage(<IncidentsPage />);
-    await user.selectOptions(screen.getByLabelText('Status'), 'Resolved');
-    await user.selectOptions(screen.getByLabelText('Severity'), 'Critical');
-    expect(screen.getByRole('heading', { name: 'No incidents match these filters' })).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
-    expect(screen.getByLabelText('Status')).toHaveValue('all');
-    expect(bodyRows('Incidents').length).toBeGreaterThan(1);
   });
 });
 

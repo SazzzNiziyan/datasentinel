@@ -187,7 +187,7 @@ describe('test-connection job', { skip }, () => {
     assert.equal((bad.error as { code: string }).code, 'not_found');
   });
 
-  it('runs freshness checks once each, recording results and safe errors', async () => {
+  it('runs freshness checks once each, recording results and safe errors', async (ctx) => {
     const t = await queued(decodeURIComponent(new URL(databaseUrl).password));
     const test = await t.row();
     const at = { workspaceId: test.workspaceId, sourceId: test.sourceId };
@@ -242,12 +242,20 @@ describe('test-connection job', { skip }, () => {
       { version: 1, type: 'freshness', timestampColumn: 'created_at', maxAgeMinutes: 525_600 },
       'fresh',
     );
-    const latest = await prisma.user.findFirstOrThrow({ orderBy: { createdAt: 'desc' } });
+    // The newest user is this test's own, a minute ahead, so another suite
+    // adding or deleting users cannot change what the check reads.
+    const latest = await prisma.user.create({
+      data: {
+        email: `fresh-${randomUUID()}@test.example`,
+        displayName: 'Fresh',
+        createdAt: new Date(Date.now() + 60_000),
+      },
+    });
+    ctx.after(() => prisma.user.delete({ where: { id: latest.id } }).then(() => undefined));
     const now = () => new Date(latest.createdAt.getTime() + 5 * 60_000);
     await handleRunCheck(deps, fresh.job, { finalAttempt: false, now });
     const passed = await fresh.row();
     assert.equal(passed.status, 'passed');
-    // Other suites may add users meanwhile, so the newest can only be newer.
     const actual = passed.actual as { lastUpdatedAt: string; ageMinutes: number };
     assert.ok(Date.parse(actual.lastUpdatedAt) >= latest.createdAt.getTime());
     assert.ok(actual.ageMinutes <= 5);

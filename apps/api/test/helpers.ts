@@ -14,6 +14,7 @@ import { keyRing } from '@datasentinel/connectors';
 import type { DiscoveryOutcome } from '@datasentinel/contracts';
 import { SOURCE_SECURITY } from '../src/credentials/credentials.js';
 import { SOURCE_JOBS, type SourceJobs } from '../src/sources/source-jobs.js';
+import { QUEUE_OPS, type QueueOps } from '../src/ops/queue-ops.js';
 
 /** Test keys: sources created through the API are sealed with these. */
 export const testKeyRing = keyRing({ key: randomBytes(32), version: 7 });
@@ -92,6 +93,7 @@ export async function startApi(
     storage?: UploadStorage;
     queue?: UploadQueue;
     sourceJobs?: SourceJobs;
+    queueOps?: QueueOps;
   } = {},
 ): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
@@ -115,6 +117,8 @@ export async function startApi(
     .useValue(fakes.queue ?? new RecordingUploadQueue())
     .overrideProvider(SOURCE_JOBS)
     .useValue(fakes.sourceJobs ?? new RecordingSourceJobs())
+    .overrideProvider(QUEUE_OPS)
+    .useValue(fakes.queueOps ?? { list: () => Promise.resolve([]) })
     .overrideProvider(SOURCE_SECURITY)
     .useValue({ ring: testKeyRing, networkPolicy: 'public-only' })
     .compile();

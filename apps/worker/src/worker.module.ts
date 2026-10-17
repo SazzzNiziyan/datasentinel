@@ -14,7 +14,7 @@ import { keyRing } from '@datasentinel/connectors';
 import { Redis } from 'ioredis';
 import { RedisSourceSlots } from './queue/source-slots.js';
 import { s3ObjectOpener } from './storage/object-opener.js';
-import { SOURCE_QUEUE } from '@datasentinel/contracts';
+import { jobOptions, SOURCE_QUEUE } from '@datasentinel/contracts';
 import { Queue } from 'bullmq';
 import { dispatchOccurrence, type Enqueue } from './scheduler/dispatch.js';
 import {
@@ -39,17 +39,7 @@ function sourcesProducer(redisUrl: string): Enqueue {
       connection: new Redis(redisUrl, { maxRetriesPerRequest: 1 }),
     });
     await queue.addBulk(
-      jobs.map(({ name, data, jobId }) => ({
-        name,
-        data,
-        opts: {
-          jobId,
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 5000 },
-          removeOnComplete: true,
-          removeOnFail: true,
-        },
-      })),
+      jobs.map(({ name, data, jobId }) => ({ name, data, opts: jobOptions(name, jobId) })),
     );
   };
 }

@@ -27,8 +27,13 @@ import { RulesController } from './rules/rules.controller.js';
 import { SchedulesController } from './schedules/schedules.controller.js';
 import { IntegrationTokensController } from './pipeline-runs/integration-tokens.controller.js';
 import { PipelineEventsController } from './pipeline-runs/pipeline-events.controller.js';
+import { PipelineRunsController } from './pipeline-runs/pipeline-runs.controller.js';
+import { RelatedRunsController } from './pipeline-runs/related-runs.controller.js';
 import { ConnectionTestsController } from './sources/connection-tests.controller.js';
 import { BullSourceJobs, SOURCE_JOBS } from './sources/source-jobs.js';
+import { BullQueueOps, QUEUE_OPS } from './ops/queue-ops.js';
+import { QueueJobsController } from './ops/queue-jobs.controller.js';
+import { IncidentsController } from './incidents/incidents.controller.js';
 import { SourcesController } from './sources/sources.controller.js';
 import { S3UploadStorage, UPLOAD_STORAGE } from './storage/storage.js';
 import { lazySourceSecurity, SOURCE_SECURITY } from './credentials/credentials.js';
@@ -56,6 +61,10 @@ export class AppModule {
         SchedulesController,
         IntegrationTokensController,
         PipelineEventsController,
+        PipelineRunsController,
+        QueueJobsController,
+        IncidentsController,
+        RelatedRunsController,
         UploadsController,
         InvitationsController,
         AcceptInvitationController,
@@ -82,6 +91,7 @@ export class AppModule {
           useFactory: () => lazySourceSecurity(loadApiEnv),
         },
         { provide: UPLOAD_QUEUE, useFactory: () => new BullUploadQueue(options.redisUrl) },
+        { provide: QUEUE_OPS, useFactory: () => new BullQueueOps(options.redisUrl) },
         {
           provide: SOURCE_JOBS,
           useFactory: () => new BullSourceJobs(options.redisUrl),

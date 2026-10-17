@@ -13,6 +13,8 @@ import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
 import { PermissionDenied } from '../components/PermissionDenied.tsx';
+import { QueueJobsPanel } from '../settings/QueueJobsPanel.tsx';
+import { canArchive } from './labels.ts';
 import './SettingsPage.css';
 
 const ROLES: Role[] = ['owner', 'admin', 'engineer', 'analyst', 'viewer'];
@@ -48,6 +50,7 @@ export function SettingsPage() {
           contact="Ask a workspace administrator or the owner to change roles or invite members."
         />
       )}
+      {canArchive(workspace.role) && <QueueJobsPanel workspaceId={workspace.workspaceId} />}
     </PageFrame>
   );
 }

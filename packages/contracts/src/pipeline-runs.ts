@@ -141,3 +141,112 @@ export type IntegrationTokenSummary = {
 
 /** Returned once, at creation; the token cannot be read again. */
 export type IssuedIntegrationToken = IntegrationTokenSummary & { token: string };
+
+/** GET …/pipeline-runs filters (D-75). Times filter on the run's last
+ * event; `cursor` is the `nextCursor` of the previous page. */
+export const PipelineRunQuery = z.strictObject({
+  status: z.enum(pipelineRunStatuses).optional(),
+  sourceId: z.uuid().optional(),
+  datasetId: z.uuid().optional(),
+  from: time.optional(),
+  to: time.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z
+    .string()
+    .regex(/^\d{4}-\d\d-\d\dT[\d:.]+Z_[0-9a-f-]{36}$/)
+    .optional(),
+});
+export type PipelineRunQuery = z.infer<typeof PipelineRunQuery>;
+
+export type PipelineRunListItem = PipelineRunSummary & {
+  sourceName: string;
+  datasetName: string | null;
+};
+
+/** Newest first by last event; `nextCursor` is null on the last page. */
+export type PipelineRunPage = {
+  runs: PipelineRunListItem[];
+  nextCursor: string | null;
+};
+
+/** How far before a check a pipeline run may have been active (D-76). */
+export const CORRELATION_BEFORE_MS = 6 * 60 * 60_000;
+/** How far after a check's start a run may still be active. */
+export const CORRELATION_AFTER_MS = 30 * 60_000;
+export const CORRELATION_LIMIT = 5;
+
+/** `dataset_id`: the run names the dataset itself (`datasetId`).
+ * `correlation_id`: the run's `correlationId` is the dataset's ID. */
+export type CorrelationReason = 'dataset_id' | 'correlation_id';
+
+export type CorrelationCandidate = {
+  id: string;
+  datasetId: string | null;
+  correlationId: string | null;
+  startedAt: Date | null;
+  endedAt: Date | null;
+  lastEventAt: Date;
+};
+
+export type Correlated<T extends CorrelationCandidate> = {
+  run: T;
+  reason: CorrelationReason;
+  /** Minutes between the run's active period and the check; 0 when the
+   * check happened while the run was active. */
+  distanceMinutes: number;
+};
+
+/** The runs that likely explain a failed check (D-76), best first.
+ * ID rule: only runs linked to the checked dataset count, by `datasetId`
+ * or by `correlationId` equal to the dataset ID; a run with neither link
+ * is never matched, however close in time, because a wrong explanation is
+ * worse than none. Time rule: the run's active period (start, or end, or
+ * last event, to end or last event) must touch the window from 6 hours
+ * before the check to 30 minutes after it. Order: `dataset_id` before
+ * `correlation_id`, then closest, then newest; at most 5. */
+export function correlatePipelineRuns<T extends CorrelationCandidate>(
+  check: { datasetId: string; at: Date },
+  runs: readonly T[],
+): Correlated<T>[] {
+  const at = check.at.getTime();
+  const from = at - CORRELATION_BEFORE_MS;
+  const to = at + CORRELATION_AFTER_MS;
+  const found: Correlated<T>[] = [];
+  for (const run of runs) {
+    const reason: CorrelationReason | null =
+      run.datasetId === check.datasetId
+        ? 'dataset_id'
+        : run.correlationId === check.datasetId
+          ? 'correlation_id'
+          : null;
+    if (reason === null) continue;
+    const end = (run.endedAt ?? run.lastEventAt).getTime();
+    const start = Math.min((run.startedAt ?? run.endedAt ?? run.lastEventAt).getTime(), end);
+    if (end < from || start > to) continue;
+    const gap = at < start ? start - at : at > end ? at - end : 0;
+    found.push({ run, reason, distanceMinutes: Math.round(gap / 60_000) });
+  }
+  const rank = (r: CorrelationReason) => (r === 'dataset_id' ? 0 : 1);
+  return found
+    .sort(
+      (a, b) =>
+        rank(a.reason) - rank(b.reason) ||
+        a.distanceMinutes - b.distanceMinutes ||
+        b.run.lastEventAt.getTime() - a.run.lastEventAt.getTime() ||
+        (a.run.id < b.run.id ? 1 : -1),
+    )
+    .slice(0, CORRELATION_LIMIT);
+}
+
+export type CorrelatedPipelineRun = PipelineRunListItem & {
+  reason: CorrelationReason;
+  distanceMinutes: number;
+};
+
+/** GET …/check-runs/{checkRunId}/related-pipeline-runs */
+export type PipelineRunCorrelation = {
+  /** The time window searched, from the check's start. */
+  windowFrom: string;
+  windowTo: string;
+  runs: CorrelatedPipelineRun[];
+};

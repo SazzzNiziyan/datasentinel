@@ -126,6 +126,8 @@ model Membership {
   rulesCreated      QualityRule[]
   schedulesCreated  Schedule[]
   integrationTokens IntegrationToken[]
+  incidentsAssigned Incident[]
+  incidentEvents    IncidentEvent[]
   ruleRevisions     RuleRevision[]
 
   @@unique([workspaceId, userId])
@@ -263,6 +265,7 @@ model Dataset {
   rules            QualityRule[]
   schedules        Schedule[]
   pipelineRuns     PipelineRun[]
+  incidents        Incident[]
 
   @@unique([workspaceId, sourceId, stableKey])
   /// Target of composite foreign keys that keep uploads in the same source.
@@ -464,6 +467,7 @@ model QualityRule {
   revisions RuleRevision[]
   checkRuns CheckRun[]
   schedules Schedule[]
+  incidents Incident[]
 
   @@unique([workspaceId, id])
   @@index([workspaceId, datasetId])
@@ -673,4 +677,93 @@ model PipelineRun {
   @@unique([sourceId, externalRunId])
   @@index([workspaceId, createdAt])
   @@map("pipeline_runs")
+}
+
+/// FR-09 incident states (D-79). Transitions are validated in the API.
+enum IncidentStatus {
+  open
+  acknowledged
+  investigating
+  resolved
+  reopened
+}
+
+/// One data problem (D-80): repeated failures of a rule group into one
+/// incident through the dedupe key. At most one unresolved incident per
+/// (workspace, dedupe key): a partial unique index in the migration.
+model Incident {
+  id                   String         @id @default(uuid(7)) @db.Uuid
+  workspaceId          String         @map("workspace_id") @db.Uuid
+  sourceId             String         @map("source_id") @db.Uuid
+  datasetId            String         @map("dataset_id") @db.Uuid
+  ruleId               String         @map("rule_id") @db.Uuid
+  /// `rule:{ruleId}` (D-79).
+  dedupeKey            String         @map("dedupe_key")
+  title                String
+  severity             RuleSeverity
+  status               IncidentStatus @default(open)
+  assignedMembershipId String?        @map("assigned_membership_id") @db.Uuid
+  /// Failed checks attached as evidence.
+  failureCount         Int            @default(0) @map("failure_count")
+  lastFailureAt        DateTime       @map("last_failure_at") @db.Timestamptz(3)
+  openedAt             DateTime       @default(now()) @map("opened_at") @db.Timestamptz(3)
+  resolvedAt           DateTime?      @map("resolved_at") @db.Timestamptz(3)
+  resolutionNote       String?        @map("resolution_note")
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  dataset  Dataset         @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  rule     QualityRule     @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  assignee Membership?     @relation(fields: [workspaceId, assignedMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  events   IncidentEvent[]
+  evidence Evidence[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, status, openedAt])
+  @@index([workspaceId, dedupeKey, openedAt])
+  @@map("incidents")
+}
+
+/// Append-only history of an incident: opened, reopened, status and
+/// assignment changes (D-80).
+model IncidentEvent {
+  id                String          @id @default(uuid(7)) @db.Uuid
+  workspaceId       String          @map("workspace_id") @db.Uuid
+  incidentId        String          @map("incident_id") @db.Uuid
+  /// `system` or `user`.
+  actorType         String          @map("actor_type")
+  actorMembershipId String?         @map("actor_membership_id") @db.Uuid
+  type              String
+  fromStatus        IncidentStatus? @map("from_status")
+  toStatus          IncidentStatus? @map("to_status")
+  /// Safe details only, never secrets.
+  details           Json            @default("{}")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  incident Incident    @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+  actor    Membership? @relation(fields: [workspaceId, actorMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspaceId, incidentId, createdAt])
+  @@map("incident_events")
+}
+
+/// A reference to a record that supports an incident, with a small safe
+/// summary (D-80). One row per (incident, kind, record): attaching the same
+/// check again changes nothing.
+model Evidence {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  incidentId  String   @map("incident_id") @db.Uuid
+  /// `check_run` for now; profile, schema, and pipeline run follow.
+  kind        String
+  referenceId String   @map("reference_id") @db.Uuid
+  observedAt  DateTime @map("observed_at") @db.Timestamptz(3)
+  /// Measured values only, never row samples.
+  summary     Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  incident Incident @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([incidentId, kind, referenceId])
+  @@index([workspaceId, incidentId])
+  @@map("evidence")
 }

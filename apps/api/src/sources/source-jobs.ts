@@ -1,5 +1,6 @@
 import {
   DISCOVER_TABLES_JOB,
+  jobOptions,
   PROFILE_DATASET_JOB,
   RUN_CHECK_JOB,
   SOURCE_QUEUE,
@@ -49,45 +50,41 @@ export class BullSourceJobs implements SourceJobs, OnApplicationShutdown {
   /** One attempt: the user asked for this test now, and the result says
    * whether to try again. The job ID is the test ID. */
   async enqueueTest(data: TestConnectionJobData): Promise<void> {
-    await this.bull.queue.add(TEST_CONNECTION_JOB, data, {
-      jobId: data.connectionTestId,
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    });
+    await this.bull.queue.add(
+      TEST_CONNECTION_JOB,
+      data,
+      jobOptions(TEST_CONNECTION_JOB, data.connectionTestId),
+    );
   }
 
   /** The job ID is the run's, so a repeated request cannot queue it twice;
    * the worker also claims the run only once (D-59). */
   async enqueueCheck(data: RunCheckJobData): Promise<void> {
-    await this.bull.queue.add(RUN_CHECK_JOB, data, {
-      jobId: `check-${data.checkRunId}`,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+    await this.bull.queue.add(
+      RUN_CHECK_JOB,
+      data,
+      jobOptions(RUN_CHECK_JOB, `check-${data.checkRunId}`),
+    );
   }
 
   /** One pending run per dataset: the job ID repeats until it finishes. */
   async enqueueProfile(data: ProfileDatasetJobData): Promise<void> {
-    await this.bull.queue.add(PROFILE_DATASET_JOB, data, {
-      jobId: `profile-${data.datasetId}`,
-      attempts: 2,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+    await this.bull.queue.add(
+      PROFILE_DATASET_JOB,
+      data,
+      jobOptions(PROFILE_DATASET_JOB, `profile-${data.datasetId}`),
+    );
   }
 
   /** The answer holds table names only and leaves Redis within a minute. */
   async discover(data: DiscoverTablesJobData, timeoutMs: number): Promise<DiscoveryOutcome | null> {
     const { queue, events } = this.bull;
     await events.waitUntilReady();
-    const job = await queue.add(DISCOVER_TABLES_JOB, data, {
-      jobId: randomUUID(),
-      removeOnComplete: { age: 60 },
-      removeOnFail: { age: 60 },
-    });
+    const job = await queue.add(
+      DISCOVER_TABLES_JOB,
+      data,
+      jobOptions(DISCOVER_TABLES_JOB, randomUUID()),
+    );
     try {
       return (await job.waitUntilFinished(events, timeoutMs)) as DiscoveryOutcome;
     } catch {

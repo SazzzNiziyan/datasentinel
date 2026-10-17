@@ -6,10 +6,10 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 83 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
+- **Last updated:** 2026-10-17. **Done:** 95 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G and H are complete; Phase I is in progress). Decisions D-01 to D-73 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G, H, and I are complete; Phase J is in progress). Decisions D-01 to D-84 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -171,23 +171,23 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Enqueue due profile/check jobs and record the resulting run ID. (D-71)
 - [x] Add pause/resume/update schedule endpoints and UI. (D-72)
 - [x] Define pipeline-run event authentication and idempotency contract. (D-73)
-- [ ] Add pipeline-run create/update endpoints for external jobs.
-- [ ] Add status timeline and run filters.
-- [ ] Correlate nearby pipeline runs with failed checks using documented time/ID rules.
-- [ ] Add queue attempt/backoff/terminal failure settings.
-- [ ] Add authorized operator visibility for stalled/failed queue jobs.
+- [x] Add pipeline-run create/update endpoints for external jobs. (D-74)
+- [x] Add status timeline and run filters. (D-75)
+- [x] Correlate nearby pipeline runs with failed checks using documented time/ID rules. (D-76)
+- [x] Add queue attempt/backoff/terminal failure settings. (D-77)
+- [x] Add authorized operator visibility for stalled/failed queue jobs. (D-78)
 
 **Phase gate:** scheduled and event-triggered jobs are durable, idempotent, and understandable from the UI.
 
 ## 11. Phase J — Incidents and evidence
 
-- [ ] Define incident deduplication key and grouping window.
-- [ ] Create an incident on a qualifying failed check in a transaction-safe flow.
-- [ ] Store immutable check/profile/schema/run evidence references.
-- [ ] Build incident list filters and severity/status sorting.
-- [ ] Build incident detail with expected/actual values and related runs.
-- [ ] Implement acknowledge, investigate, assign, resolve, and reopen transitions.
-- [ ] Require and preserve a resolution note.
+- [x] Define incident deduplication key and grouping window. (D-79)
+- [x] Create an incident on a qualifying failed check in a transaction-safe flow. (D-80)
+- [x] Store immutable check/profile/schema/run evidence references. (D-81)
+- [x] Build incident list filters and severity/status sorting. (D-82)
+- [x] Build incident detail with expected/actual values and related runs. (D-83)
+- [x] Implement acknowledge, investigate, assign, resolve, and reopen transitions. (D-84)
+- [x] Require and preserve a resolution note. (D-84)
 - [ ] Add comments and status/assignment history.
 - [ ] Add owner notifications as pending outbox events.
 - [ ] Verify repeated check failures append evidence instead of creating duplicate incident spam.

@@ -1,4 +1,5 @@
 import {
+  jobOptions,
   PARSE_UPLOAD_JOB,
   UPLOAD_QUEUE as QUEUE_NAME,
   type ParseUploadJobData,
@@ -26,13 +27,7 @@ export class BullUploadQueue implements UploadQueue, OnApplicationShutdown {
       const connection = new Redis(this.redisUrl, { maxRetriesPerRequest: 1 });
       this.queue = { connection, queue: new Queue(QUEUE_NAME, { connection }) };
     }
-    await this.queue.queue.add(PARSE_UPLOAD_JOB, data, {
-      jobId: data.uploadId,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    });
+    await this.queue.queue.add(PARSE_UPLOAD_JOB, data, jobOptions(PARSE_UPLOAD_JOB, data.uploadId));
   }
 
   async onApplicationShutdown() {
