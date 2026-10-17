@@ -231,6 +231,8 @@ describe('Dataset page', () => {
   it('shows the latest profile and the uploads with their problems', async () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => dataset,
+      'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [
         upload({
           id: 'u2',
@@ -285,6 +287,8 @@ describe('Dataset page', () => {
         latestProfile: failedProfile,
         lastSuccessfulProfile: null,
       }),
+      'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
     renderDatasetPage();
@@ -300,6 +304,8 @@ describe('Dataset page', () => {
   it('keeps the last good profile in view after a failed one', async () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => ({ ...dataset, latestProfile: failedProfile }),
+      'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
     renderDatasetPage();
@@ -315,6 +321,8 @@ describe('Dataset page', () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () =>
         reply(404, { title: 'Dataset not found.', status: 404, code: 'dataset_not_found' }),
+      'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
     renderDatasetPage();
@@ -373,6 +381,8 @@ describe('Accessibility of the upload screens', () => {
   it('dataset page has no automatically detectable problems', async () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => dataset,
+      'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [
         upload({ status: 'succeeded', rowCount: 4 }),
       ],

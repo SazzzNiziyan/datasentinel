@@ -1,0 +1,30 @@
+/* Rule builder additions to the shared dialog styles (D-67). */
+.rule-builder__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-4);
+}
+
+.rule-builder__check {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-compact);
+}
+
+/* The sentence the rule will check, or what still stops it from saving. */
+.rule-builder__preview {
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-healthy);
+}
+
+.rule-builder__preview[data-valid='false'] {
+  border-left-color: var(--color-status-warning);
+}
+
+.rule-builder__problems {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+  font-size: var(--text-compact);
+}

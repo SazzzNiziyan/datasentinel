@@ -1,11 +1,13 @@
 import { credentialContext, keyRing, sealSecret } from '@datasentinel/connectors';
 import { createPrismaClient } from '@datasentinel/db';
 import assert from 'node:assert/strict';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { after, describe, it } from 'node:test';
 import { handleDiscoverTables } from '../src/jobs/discover-tables.js';
 import { handleProfileDataset } from '../src/jobs/profile-dataset.js';
-import { readMeasurements } from '../src/jobs/profile-metrics.js';
+import { profileMetrics, readMeasurements } from '../src/jobs/profile-metrics.js';
+import { handleRunCheck } from '../src/jobs/run-check.js';
 import { handleTestConnection } from '../src/jobs/test-connection.js';
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
@@ -183,5 +185,338 @@ describe('test-connection job', { skip }, () => {
     assert.equal(bad.status, 'failed');
     assert.equal(bad.rowCount, null);
     assert.equal((bad.error as { code: string }).code, 'not_found');
+  });
+
+  it('runs freshness checks once each, recording results and safe errors', async () => {
+    const t = await queued(decodeURIComponent(new URL(databaseUrl).password));
+    const test = await t.row();
+    const at = { workspaceId: test.workspaceId, sourceId: test.sourceId };
+    const users = await prisma.dataset.create({
+      data: {
+        ...at,
+        stableKey: 'public.users',
+        name: 'users',
+        locator: { schema: 'public', table: 'users' },
+      },
+    });
+    async function check(
+      definition: object,
+      key: string,
+      datasetId = users.id,
+      sourceId = at.sourceId,
+    ) {
+      const rule = await prisma.qualityRule.create({
+        data: {
+          ...at,
+          sourceId,
+          datasetId,
+          name: key,
+          type: 'freshness',
+          severity: 'critical',
+          currentVersion: 1,
+        },
+      });
+      const revision = await prisma.ruleRevision.create({
+        data: {
+          workspaceId: at.workspaceId,
+          ruleId: rule.id,
+          version: 1,
+          definition,
+          severity: 'critical',
+        },
+      });
+      const run = await prisma.checkRun.create({
+        data: {
+          workspaceId: at.workspaceId,
+          ruleId: rule.id,
+          ruleRevisionId: revision.id,
+          trigger: 'manual',
+          idempotencyKey: key,
+        },
+      });
+      const job = { workspaceId: at.workspaceId, checkRunId: run.id };
+      return { job, row: () => prisma.checkRun.findUniqueOrThrow({ where: { id: run.id } }) };
+    }
+
+    const fresh = await check(
+      { version: 1, type: 'freshness', timestampColumn: 'created_at', maxAgeMinutes: 525_600 },
+      'fresh',
+    );
+    const latest = await prisma.user.findFirstOrThrow({ orderBy: { createdAt: 'desc' } });
+    const now = () => new Date(latest.createdAt.getTime() + 5 * 60_000);
+    await handleRunCheck(deps, fresh.job, { finalAttempt: false, now });
+    const passed = await fresh.row();
+    assert.equal(passed.status, 'passed');
+    // Other suites may add users meanwhile, so the newest can only be newer.
+    const actual = passed.actual as { lastUpdatedAt: string; ageMinutes: number };
+    assert.ok(Date.parse(actual.lastUpdatedAt) >= latest.createdAt.getTime());
+    assert.ok(actual.ageMinutes <= 5);
+    assert.ok(passed.endedAt && passed.durationMs !== null);
+    // A repeated delivery does nothing, and a finished run cannot change.
+    await handleRunCheck(deps, fresh.job, { finalAttempt: false, now });
+    assert.deepEqual(await fresh.row(), passed);
+    await assert.rejects(
+      prisma.checkRun.update({ where: { id: passed.id }, data: { status: 'failed' } }),
+    );
+
+    const textColumn = await check(
+      { version: 1, type: 'freshness', timestampColumn: 'email', maxAgeMinutes: 60 },
+      'text',
+    );
+    await handleRunCheck(deps, textColumn.job, { finalAttempt: false });
+    const refused = await textColumn.row();
+    assert.equal(refused.status, 'error');
+    assert.equal((refused.error as { code: string }).code, 'unsupported');
+
+    const noProfile = await check({ version: 1, type: 'freshness', maxAgeMinutes: 60 }, 'none');
+    await handleRunCheck(deps, noProfile.job, { finalAttempt: false });
+    assert.equal((await noProfile.row()).status, 'insufficient_data');
+
+    const invalid = await check({ version: 1, type: 'freshness', maxAgeMinutes: 0 }, 'bad');
+    await handleRunCheck(deps, invalid.job, { finalAttempt: false });
+    assert.equal(((await invalid.row()).error as { code: string }).code, 'invalid_config');
+
+    const notNull = await check(
+      { version: 1, type: 'not_null', column: 'email', maxNullPercent: 0 },
+      'nn',
+    );
+    await handleRunCheck(deps, notNull.job, { finalAttempt: false });
+    const nn = await notNull.row();
+    assert.equal(nn.status, 'passed');
+    assert.equal((nn.actual as { nullCount: number }).nullCount, 0);
+
+    // CSV: counts come from the latest upload's profile.
+    const csv = await prisma.dataSource.create({
+      data: { workspaceId: at.workspaceId, name: 'files', type: 'csv' },
+    });
+    const file = await prisma.dataset.create({
+      data: { workspaceId: at.workspaceId, sourceId: csv.id, stableKey: 'f', name: 'f' },
+    });
+    await prisma.profileSnapshot.create({
+      data: {
+        workspaceId: at.workspaceId,
+        sourceId: csv.id,
+        datasetId: file.id,
+        status: 'succeeded',
+        observedAt: new Date(),
+        durationMs: 1,
+        rowCount: 4,
+        rowCountMethod: 'exact',
+        metrics: profileMetrics({
+          observedAt: new Date(),
+          rowCount: 4,
+          rowCountMethod: 'exact',
+          columns: [{ name: 'city', type: 'text', nullCount: 1 }],
+        }),
+      },
+    });
+    const csvCheck = await check(
+      { version: 1, type: 'not_null', column: 'city', maxNullPercent: 20 },
+      'csv',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(deps, csvCheck.job, { finalAttempt: false });
+    const csvRun = await csvCheck.row();
+    assert.equal(csvRun.status, 'failed');
+    assert.deepEqual(csvRun.actual, { rowCount: 4, nullCount: 1, nullPercent: 25 });
+
+    // Uniqueness: PostgreSQL groups in the database; CSV reads the file again.
+    const pgUnique = await check(
+      { version: 1, type: 'uniqueness', columns: ['email'] },
+      'pg-unique',
+    );
+    await handleRunCheck(deps, pgUnique.job, { finalAttempt: false });
+    assert.equal((await pgUnique.row()).status, 'passed');
+
+    const body = Buffer.from(
+      ['id,city', '1,Oslo', '2,Oslo', '1,Oslo', '3,', ''].join(String.fromCharCode(10)),
+    );
+    const upload = await prisma.upload.create({
+      data: {
+        workspaceId: at.workspaceId,
+        sourceId: csv.id,
+        datasetId: file.id,
+        objectKey: `test/${randomUUID()}.csv`,
+        filename: 'f.csv',
+        sizeBytes: body.length,
+        checksumSha256: createHash('sha256').update(body).digest('hex'),
+        status: 'succeeded',
+        createdByMembershipId: test.requestedByMembershipId,
+        uploadUrlExpiresAt: new Date(),
+        retainUntil: new Date(Date.now() + 86_400_000),
+      },
+    });
+    await prisma.profileSnapshot.create({
+      data: {
+        workspaceId: at.workspaceId,
+        sourceId: csv.id,
+        datasetId: file.id,
+        uploadId: upload.id,
+        status: 'succeeded',
+        observedAt: new Date(),
+        durationMs: 1,
+        rowCount: 4,
+        rowCountMethod: 'exact',
+        metrics: profileMetrics({
+          observedAt: new Date(),
+          rowCount: 4,
+          rowCountMethod: 'exact',
+          columns: [
+            { name: 'id', type: 'integer', nullCount: 0 },
+            { name: 'city', type: 'text', nullCount: 1 },
+          ],
+        }),
+      },
+    });
+    const files = {
+      ...deps,
+      open: (key: string) =>
+        Promise.resolve(key === upload.objectKey ? Readable.from([body]) : null),
+    };
+    const csvUnique = await check(
+      { version: 1, type: 'uniqueness', columns: ['id', 'city'] },
+      'csv-unique',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(files, csvUnique.job, { finalAttempt: false });
+    const unique = await csvUnique.row();
+    assert.equal(unique.status, 'failed');
+    assert.deepEqual(unique.actual, { rowCount: 4, duplicateRows: 1, duplicateKeys: 1 });
+    assert.doesNotMatch(JSON.stringify(unique), /Oslo/);
+
+    const pgRows = await check({ version: 1, type: 'row_count', minRows: 1 }, 'pg-rows');
+    await handleRunCheck(deps, pgRows.job, { finalAttempt: false });
+    assert.equal((await pgRows.row()).status, 'passed');
+    const csvRows = await check(
+      { version: 1, type: 'row_count', maxRows: 3 },
+      'csv-rows',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(deps, csvRows.job, { finalAttempt: false });
+    const rowsRun = await csvRows.row();
+    assert.equal(rowsRun.status, 'failed');
+    assert.deepEqual(rowsRun.actual, { rowCount: 4, rowCountMethod: 'exact' });
+
+    const pgRange = await check(
+      { version: 1, type: 'range', column: 'created_at', min: '2000-01-01' },
+      'pg-range',
+    );
+    await handleRunCheck(deps, pgRange.job, { finalAttempt: false });
+    assert.equal((await pgRange.row()).status, 'passed');
+    const csvRange = await check(
+      { version: 1, type: 'range', column: 'id', min: 1, max: 2 },
+      'csv-range',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(files, csvRange.job, { finalAttempt: false });
+    const rangeRun = await csvRange.row();
+    assert.equal(rangeRun.status, 'failed');
+    assert.deepEqual(rangeRun.actual, { valuesChecked: 4, belowMin: 0, aboveMax: 1 });
+    const textRange = await check(
+      { version: 1, type: 'range', column: 'city', min: 1 },
+      'csv-text-range',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(files, textRange.job, { finalAttempt: false });
+    assert.equal(((await textRange.row()).error as { code: string }).code, 'unsupported');
+
+    const pgSchema = await check(
+      {
+        version: 1,
+        type: 'schema',
+        requiredColumns: [{ name: 'email', type: 'text' }, { name: 'no_such_column' }],
+      },
+      'pg-schema',
+    );
+    await handleRunCheck(deps, pgSchema.job, { finalAttempt: false });
+    const schemaRun = await pgSchema.row();
+    assert.equal(schemaRun.status, 'failed');
+    assert.deepEqual((schemaRun.actual as { missing: string[] }).missing, ['no_such_column']);
+    const csvSchema = await check(
+      { version: 1, type: 'schema', requiredColumns: [{ name: 'id' }] },
+      'csv-schema',
+      file.id,
+      csv.id,
+    );
+    await handleRunCheck(deps, csvSchema.job, { finalAttempt: false });
+    assert.equal((await csvSchema.row()).status, 'insufficient_data');
+
+    // Metric change: three days of 100 rows, then 60 today.
+    const trend = await prisma.dataset.create({
+      data: { workspaceId: at.workspaceId, sourceId: csv.id, stableKey: 't', name: 't' },
+    });
+    const today = Date.now();
+    for (const [daysAgo, rows] of [
+      [3, 100],
+      [2, 90],
+      [1, 110],
+      [0, 60],
+      [9, 5],
+    ] as const) {
+      const observedAt = new Date(today - daysAgo * 86_400_000);
+      await prisma.profileSnapshot.create({
+        data: {
+          workspaceId: at.workspaceId,
+          sourceId: csv.id,
+          datasetId: trend.id,
+          status: 'succeeded',
+          observedAt,
+          durationMs: 1,
+          rowCount: rows,
+          rowCountMethod: 'exact',
+          metrics: profileMetrics({
+            observedAt,
+            rowCount: rows,
+            rowCountMethod: 'exact',
+            columns: [],
+          }),
+        },
+      });
+    }
+    const drop = await check(
+      {
+        version: 1,
+        type: 'metric_change',
+        metric: 'row_count',
+        comparisonWindowDays: 7,
+        maxDropPercent: 30,
+        minimumHistoryPoints: 3,
+      },
+      'trend',
+      trend.id,
+      csv.id,
+    );
+    await handleRunCheck(deps, drop.job, { finalAttempt: false });
+    const dropRun = await drop.row();
+    assert.equal(dropRun.status, 'failed');
+    const trendActual = dropRun.actual as {
+      baseline: number;
+      historyPoints: number;
+      current: number;
+    };
+    assert.deepEqual(
+      [trendActual.current, trendActual.baseline, trendActual.historyPoints],
+      [60, 100, 3],
+    );
+    const tooShort = await check(
+      {
+        version: 1,
+        type: 'metric_change',
+        metric: 'row_count',
+        comparisonWindowDays: 7,
+        maxDropPercent: 30,
+        minimumHistoryPoints: 4,
+      },
+      'trend-short',
+      trend.id,
+      csv.id,
+    );
+    await handleRunCheck(deps, tooShort.job, { finalAttempt: false });
+    assert.equal((await tooShort.row()).status, 'insufficient_data');
   });
 });

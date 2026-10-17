@@ -21,12 +21,14 @@ export function ProfileNow({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const alive = useRef(true);
-  useEffect(
-    () => () => {
+  // Set on every mount: development mode mounts twice, and a flag left
+  // false by the first unmount would stop the follow-up below for good.
+  useEffect(() => {
+    alive.current = true;
+    return () => {
       alive.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function run() {
     if (busy) return;

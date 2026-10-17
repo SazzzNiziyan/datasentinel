@@ -55,6 +55,7 @@ export class WorkerModule {
                 previous: env.SECRETS_ENCRYPTION_PREVIOUS_KEYS,
               }),
               policy: env.SOURCE_NETWORK_POLICY,
+              open: s3ObjectOpener(env),
               slots: new RedisSourceSlots(new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 })),
             };
           },

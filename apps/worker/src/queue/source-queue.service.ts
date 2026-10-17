@@ -1,10 +1,12 @@
 import {
   DISCOVER_TABLES_JOB,
   PROFILE_DATASET_JOB,
+  RUN_CHECK_JOB,
   SOURCE_QUEUE,
   TEST_CONNECTION_JOB,
   type DiscoverTablesJobData,
   type ProfileDatasetJobData,
+  type RunCheckJobData,
   type TestConnectionJobData,
 } from '@datasentinel/contracts';
 import {
@@ -18,6 +20,7 @@ import { Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { handleDiscoverTables } from '../jobs/discover-tables.js';
 import { handleProfileDataset } from '../jobs/profile-dataset.js';
+import { handleRunCheck } from '../jobs/run-check.js';
 import { handleTestConnection, type TestConnectionDeps } from '../jobs/test-connection.js';
 import { WORKER_OPTIONS, type WorkerOptions } from './system-queue.service.js';
 
@@ -67,6 +70,10 @@ export class SourceQueueService implements OnApplicationBootstrap, OnApplication
         return handleProfileDataset(this.deps, job.data as ProfileDatasetJobData, {
           finalAttempt,
         });
+      }
+      case RUN_CHECK_JOB: {
+        const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+        return handleRunCheck(this.deps, job.data as RunCheckJobData, { finalAttempt });
       }
       case DISCOVER_TABLES_JOB:
         return handleDiscoverTables(this.deps, job.data as DiscoverTablesJobData);

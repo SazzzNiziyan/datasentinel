@@ -13,6 +13,8 @@ export interface ScanOptions {
   sizeBytes: number;
   sha256: string;
   signal?: AbortSignal;
+  /** Sees each data row after its checks pass, with the header names. */
+  onRow?: (values: readonly string[], columns: readonly string[]) => void;
 }
 
 export interface CsvColumn {
@@ -70,7 +72,7 @@ const sizeMismatch = () =>
  * skipped. Rejects with CsvRejection; other errors (storage) pass through. */
 export async function scanCsv(
   body: AsyncIterable<Uint8Array>,
-  { limits = CSV_LIMITS, sizeBytes, sha256, signal }: ScanOptions,
+  { limits = CSV_LIMITS, sizeBytes, sha256, signal, onRow }: ScanOptions,
 ): Promise<CsvSummary> {
   const hash = createHash('sha256');
   let bytes = 0;
@@ -144,6 +146,7 @@ export async function scanCsv(
             );
           }
           record.forEach((value, i) => profilers[i]?.add(value));
+          onRow?.(record, columns);
           rowCount += 1;
         }
       },

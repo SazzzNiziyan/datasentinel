@@ -1,0 +1,28 @@
+.dataset-rules__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dataset-rules__rule {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 60ch;
+}
+
+.dataset-rules__name {
+  font-weight: var(--weight-strong);
+}
+
+.dataset-rules__condition {
+  font-size: var(--text-compact);
+}
+
+.dataset-rules__error {
+  max-width: 60ch;
+  padding-left: var(--space-3);
+  font-size: var(--text-compact);
+  border-left: var(--space-1) solid var(--color-status-critical);
+}

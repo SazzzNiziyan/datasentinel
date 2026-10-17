@@ -281,6 +281,221 @@ export interface PostgresProfile {
   columns: PostgresColumnProfile[];
 }
 
+type TableRef = { schema: string; table: string };
+
+/** One readable column's native type and its table's planner row estimate
+ * (null when unknown); a missing table or column is not_found. */
+async function findColumn(
+  client: pg.Client,
+  { schema, table }: TableRef,
+  column: string,
+): Promise<{ native: string; estimate: number | null }> {
+  const found = await client.query<{ native: string; estimate: string | null }>(
+    `SELECT pg_catalog.format_type(a.atttypid, a.atttypmod) AS native,
+            c.reltuples::bigint::text AS estimate
+       FROM pg_catalog.pg_attribute a
+       JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+      WHERE a.attrelid = pg_catalog.to_regclass(pg_catalog.format('%I.%I', $1::text, $2::text))
+        AND a.attname = $3 AND a.attnum > 0 AND NOT a.attisdropped
+        AND pg_catalog.has_table_privilege(a.attrelid, 'SELECT')`,
+    [schema, table, column],
+  );
+  const row = found.rows[0];
+  if (row === undefined) throw new ConnectorFailure('not_found');
+  const estimate = Number(row.estimate);
+  return {
+    native: row.native,
+    estimate: Number.isFinite(estimate) && estimate >= 0 ? estimate : null,
+  };
+}
+
+/** Row and null counts of one column, for the not-null rule (D-60). Both
+ * are exact; a table estimated above EXACT_COUNT_LIMIT is too_large rather
+ * than scanned. */
+export async function columnNullCount(
+  client: pg.Client,
+  { schema, table }: TableRef,
+  column: string,
+): Promise<{ rowCount: number; nullCount: number }> {
+  const { estimate } = await findColumn(client, { schema, table }, column);
+  if (estimate !== null && estimate > EXACT_COUNT_LIMIT) throw new ConnectorFailure('too_large');
+  const row = (
+    await client.query<{ total: string; filled: string }>(
+      `SELECT count(*) AS total, count(${quoteIdent(column)}) AS filled
+         FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+    )
+  ).rows[0];
+  const rowCount = Number(row?.total ?? 0);
+  return { rowCount, nullCount: rowCount - Number(row?.filled ?? 0) };
+}
+
+/** A table's row count for the row-count rule (D-62): exact up to
+ * EXACT_COUNT_LIMIT by the planner's estimate, otherwise that estimate,
+ * marked approximate. A missing or unreadable table is not_found. */
+export async function tableRowCount(
+  client: pg.Client,
+  { schema, table }: TableRef,
+): Promise<{ rowCount: number; method: 'exact' | 'approximate' }> {
+  const relation = await client.query<{ estimate: string | null }>(
+    `SELECT c.reltuples::bigint::text AS estimate
+       FROM pg_catalog.pg_class c
+      WHERE c.oid = pg_catalog.to_regclass(pg_catalog.format('%I.%I', $1::text, $2::text))
+        AND pg_catalog.has_table_privilege(c.oid, 'SELECT')`,
+    [schema, table],
+  );
+  const found = relation.rows[0];
+  if (found === undefined) throw new ConnectorFailure('not_found');
+  const estimate = Number(found.estimate);
+  if (Number.isFinite(estimate) && estimate > EXACT_COUNT_LIMIT) {
+    return { rowCount: estimate, method: 'approximate' };
+  }
+  const row = (
+    await client.query<{ total: string }>(
+      `SELECT count(*) AS total FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+    )
+  ).rows[0];
+  return { rowCount: Number(row?.total ?? 0), method: 'exact' };
+}
+
+/** Counts of a numeric or date column's values outside a range (D-63),
+ * never the values. Bounds travel as parameters: numbers, or ISO times for
+ * date columns, which are compared as UTC like latestTimestamp. The column
+ * must be numeric or a date/time (`unsupported`) of the bounds' kind
+ * (`invalid_config`); tables above EXACT_COUNT_LIMIT are too_large. */
+export async function rangeCounts(
+  client: pg.Client,
+  { schema, table }: TableRef,
+  column: string,
+  bounds: {
+    kind: 'number' | 'time';
+    low: number | string | null;
+    high: number | string | null;
+    highInclusive: boolean;
+  },
+): Promise<{ valuesChecked: number; belowMin: number; aboveMax: number }> {
+  const { native, estimate } = await findColumn(client, { schema, table }, column);
+  const type = normalizePgType(native);
+  const kind =
+    type === 'integer' || type === 'decimal'
+      ? 'number'
+      : type === 'date' || type === 'timestamp'
+        ? 'time'
+        : null;
+  if (kind === null) throw new ConnectorFailure('unsupported');
+  if (kind !== bounds.kind) throw new ConnectorFailure('invalid_config');
+  if (estimate !== null && estimate > EXACT_COUNT_LIMIT) throw new ConnectorFailure('too_large');
+  const q = quoteIdent(column);
+  const value =
+    kind === 'number'
+      ? q
+      : native.includes('with time zone')
+        ? q
+        : `${q}::timestamp AT TIME ZONE 'UTC'`;
+  const cast = kind === 'number' ? 'numeric' : 'timestamptz';
+  const row = (
+    await client.query<{ checked: string; below: string; above: string }>(
+      `SELECT count(${q}) AS checked,
+              count(*) FILTER (WHERE ${value} < $1::${cast}) AS below,
+              count(*) FILTER (WHERE ${value} ${bounds.highInclusive ? '>' : '>='} $2::${cast}) AS above
+         FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+      [bounds.low, bounds.high],
+    )
+  ).rows[0];
+  return {
+    valuesChecked: Number(row?.checked ?? 0),
+    belowMin: Number(row?.below ?? 0),
+    aboveMax: Number(row?.above ?? 0),
+  };
+}
+
+/** A table's columns from the catalog, in order (D-64): normalized type
+ * and declared nullability. Reads no rows; a missing or unreadable table
+ * is not_found. */
+export async function tableColumns(
+  client: pg.Client,
+  { schema, table }: TableRef,
+): Promise<{ name: string; type: string; nullable: boolean }[]> {
+  const result = await client.query<{ name: string; native: string; nullable: boolean }>(
+    `SELECT a.attname AS name, pg_catalog.format_type(a.atttypid, a.atttypmod) AS native,
+            NOT a.attnotnull AS nullable
+       FROM pg_catalog.pg_attribute a
+      WHERE a.attrelid = pg_catalog.to_regclass(pg_catalog.format('%I.%I', $1::text, $2::text))
+        AND a.attnum > 0 AND NOT a.attisdropped
+        AND pg_catalog.has_table_privilege(a.attrelid, 'SELECT')
+      ORDER BY a.attnum`,
+    [schema, table],
+  );
+  if (result.rows.length === 0) throw new ConnectorFailure('not_found');
+  return result.rows.map((c) => ({
+    name: c.name,
+    type: normalizePgType(c.native),
+    nullable: c.nullable,
+  }));
+}
+
+/** The most rows a duplicate check reads, by the planner's estimate
+ * (D-61); larger tables are too_large rather than scanned. */
+export const DUPLICATE_SCAN_LIMIT = 1_000_000;
+
+/** Duplicate counts for a key of 1 to 5 columns (D-61): rows beyond the
+ * first per repeated key, and how many keys repeat. Rows with a null key
+ * part are skipped, as a UNIQUE constraint skips them. Returns counts only,
+ * never key values. `json` columns have no equality and are unsupported. */
+export async function duplicateCounts(
+  client: pg.Client,
+  { schema, table }: TableRef,
+  columns: readonly string[],
+): Promise<{ rowCount: number; duplicateRows: number; duplicateKeys: number }> {
+  let estimate: number | null = null;
+  for (const column of columns) {
+    const found = await findColumn(client, { schema, table }, column);
+    if (found.native === 'json') throw new ConnectorFailure('unsupported');
+    estimate = found.estimate;
+  }
+  if (estimate !== null && estimate > DUPLICATE_SCAN_LIMIT) {
+    throw new ConnectorFailure('too_large');
+  }
+  const target = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+  const key = columns.map(quoteIdent);
+  const row = (
+    await client.query<{ total: string; rows: string; keys: string }>(
+      `SELECT (SELECT count(*) FROM ${target}) AS total,
+              coalesce(sum(g.n - 1), 0) AS rows, count(*) AS keys
+         FROM (SELECT count(*) AS n FROM ${target}
+                WHERE ${key.map((k) => `${k} IS NOT NULL`).join(' AND ')}
+                GROUP BY ${key.join(', ')} HAVING count(*) > 1) g`,
+    )
+  ).rows[0];
+  return {
+    rowCount: Number(row?.total ?? 0),
+    duplicateRows: Number(row?.rows ?? 0),
+    duplicateKeys: Number(row?.keys ?? 0),
+  };
+}
+
+/** The newest value of a date or timestamp column, for freshness (D-59);
+ * null when the column has no values. Other types are unsupported, since
+ * max() of text sorts by characters, not time. Dates and timestamps without
+ * a zone are read as UTC. A missing table or column is not_found. */
+export async function latestTimestamp(
+  client: pg.Client,
+  { schema, table }: { schema: string; table: string },
+  column: string,
+): Promise<Date | null> {
+  const { native } = await findColumn(client, { schema, table }, column);
+  const type = normalizePgType(native);
+  if (type !== 'date' && type !== 'timestamp') throw new ConnectorFailure('unsupported');
+  const value = native.includes('with time zone')
+    ? `max(${quoteIdent(column)})`
+    : `max(${quoteIdent(column)})::timestamp AT TIME ZONE 'UTC'`;
+  const row = (
+    await client.query<{ latest: Date | null }>(
+      `SELECT ${value} AS latest FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+    )
+  ).rows[0];
+  return row?.latest ?? null;
+}
+
 /** Above this planner estimate, counts are not run (D-52). */
 export const EXACT_COUNT_LIMIT = 1_000_000;
 

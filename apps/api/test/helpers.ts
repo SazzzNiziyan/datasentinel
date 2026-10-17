@@ -78,6 +78,11 @@ export class RecordingSourceJobs implements SourceJobs {
     this.profiles.push(data);
     return Promise.resolve();
   }
+  readonly checks: { workspaceId: string; checkRunId: string }[] = [];
+  enqueueCheck(data: { workspaceId: string; checkRunId: string }) {
+    this.checks.push(data);
+    return Promise.resolve();
+  }
 }
 
 /** Starts the real API module against the local database. Storage and the

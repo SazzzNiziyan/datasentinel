@@ -23,6 +23,7 @@ import { WorkspacesController } from './workspaces/workspaces.controller.js';
 import { APP_OPTIONS, type AppOptions } from './options.js';
 import { ProblemFilter } from './problem.js';
 import { LifecycleController } from './sources/lifecycle.controller.js';
+import { RulesController } from './rules/rules.controller.js';
 import { ConnectionTestsController } from './sources/connection-tests.controller.js';
 import { BullSourceJobs, SOURCE_JOBS } from './sources/source-jobs.js';
 import { SourcesController } from './sources/sources.controller.js';
@@ -48,6 +49,7 @@ export class AppModule {
         SourcesController,
         LifecycleController,
         ConnectionTestsController,
+        RulesController,
         UploadsController,
         InvitationsController,
         AcceptInvitationController,

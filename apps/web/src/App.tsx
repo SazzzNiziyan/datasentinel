@@ -6,6 +6,7 @@ import { SessionProvider } from './app/SessionProvider.tsx';
 import { primaryNav, secondaryNav } from './app/navigation.ts';
 import { LoadingState } from './components/LoadingState.tsx';
 import { DatasetDetailPage } from './pages/DatasetDetailPage.tsx';
+import { RulePage } from './rules/RulePage.tsx';
 import { DatasetsPage } from './pages/DatasetsPage.tsx';
 import { IncidentsPage } from './pages/IncidentsPage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
@@ -56,6 +57,7 @@ export function App() {
               />
             ))}
             <Route path="/datasets/:datasetId" element={<DatasetDetailPage />} />
+            <Route path="/rules/:ruleId" element={<RulePage />} />
             {ComponentGallery !== null && (
               <Route
                 path="/dev/components"

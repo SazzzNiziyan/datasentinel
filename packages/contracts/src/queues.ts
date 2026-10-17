@@ -56,3 +56,12 @@ export interface ProfileDatasetJobData {
   workspaceId: string;
   datasetId: string;
 }
+
+/** Runs one queued check (D-59). Job ID `check-<checkRunId>`; the run row
+ * is claimed once, so a repeated delivery does nothing. */
+export const RUN_CHECK_JOB = 'run-check';
+
+export interface RunCheckJobData {
+  workspaceId: string;
+  checkRunId: string;
+}

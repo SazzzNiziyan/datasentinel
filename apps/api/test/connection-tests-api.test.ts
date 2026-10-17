@@ -134,4 +134,75 @@ describe('connection test API', { skip }, () => {
     await prisma.dataset.update({ where: { id: d.id }, data: { status: 'archived' } });
     assert.equal((await t.call('POST', `/datasets/${d.id}/profile-runs`)).status, 409);
   });
+
+  it('lists profile history with method, column count, and schema changes', async () => {
+    const t = await tenant('analyst');
+    const at = { workspaceId: t.csv.workspaceId, sourceId: t.csv.id };
+    const d = await prisma.dataset.create({ data: { ...at, stableKey: 'h', name: 'h' } });
+    const day = (n: number) => new Date(Date.UTC(2026, 9, n));
+    for (const [n, hash, columns] of [
+      [1, 'a', 2],
+      [2, 'a', 2],
+      [3, 'b', 3],
+    ] as const) {
+      const p = await prisma.profileSnapshot.create({
+        data: {
+          ...at,
+          datasetId: d.id,
+          status: 'succeeded',
+          observedAt: day(n),
+          durationMs: 5,
+          rowCount: 10 * n,
+          rowCountMethod: 'exact',
+        },
+      });
+      await prisma.schemaSnapshot.create({
+        data: {
+          ...at,
+          datasetId: d.id,
+          profileSnapshotId: p.id,
+          observedAt: day(n),
+          rowCount: 10 * n,
+          schemaHash: hash.repeat(64),
+          columns: Array.from({ length: columns }, (_, i) => ({
+            name: `c${i}`,
+            type: 'text',
+            nullable: true,
+            ordinal: i + 1,
+          })),
+        },
+      });
+    }
+    await prisma.profileSnapshot.create({
+      data: {
+        ...at,
+        datasetId: d.id,
+        status: 'failed',
+        observedAt: day(4),
+        durationMs: 1,
+        error: { code: 'timeout', message: 'The source took too long to answer.', retryable: true },
+      },
+    });
+
+    const res = await t.call('GET', `/datasets/${d.id}/profiles`);
+    assert.equal(res.status, 200);
+    const list = res.body as unknown as {
+      status: string;
+      rowCount: number | null;
+      rowCountMethod: string | null;
+      columnCount: number | null;
+      schemaChanged: boolean | null;
+    }[];
+    assert.deepEqual(
+      list.map((p) => [p.status, p.rowCount, p.rowCountMethod, p.columnCount, p.schemaChanged]),
+      [
+        ['failed', null, null, null, null],
+        ['succeeded', 30, 'exact', 3, true],
+        ['succeeded', 20, 'exact', 2, false],
+        ['succeeded', 10, 'exact', 2, null],
+      ],
+    );
+    const stranger = await tenant();
+    assert.equal((await stranger.call('GET', `/datasets/${d.id}/profiles`)).status, 404);
+  });
 });

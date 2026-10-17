@@ -123,6 +123,8 @@ model Membership {
   invitationsSent Invitation[]
   uploadsCreated  Upload[]
   connectionTests ConnectionTest[]
+  rulesCreated    QualityRule[]
+  ruleRevisions   RuleRevision[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -254,6 +256,7 @@ model Dataset {
   uploads          Upload[]
   profileSnapshots ProfileSnapshot[]
   schemaSnapshots  SchemaSnapshot[]
+  rules            QualityRule[]
 
   @@unique([workspaceId, sourceId, stableKey])
   /// Target of composite foreign keys that keep uploads in the same source.
@@ -424,4 +427,105 @@ model ConnectionTest {
 
   @@index([workspaceId, sourceId, createdAt])
   @@map("connection_tests")
+}
+
+/// Q-02, D-58: only critical opens an incident.
+enum RuleSeverity {
+  critical
+  warning
+  info
+}
+
+/// FR-05, D-59. The definition lives in revisions; `currentVersion` points
+/// at the one new checks use.
+model QualityRule {
+  id                    String       @id @default(uuid(7)) @db.Uuid
+  workspaceId           String       @map("workspace_id") @db.Uuid
+  sourceId              String       @map("source_id") @db.Uuid
+  datasetId             String       @map("dataset_id") @db.Uuid
+  name                  String
+  /// RuleDefinition["type"], copied from the current revision for filtering.
+  type                  String
+  severity              RuleSeverity
+  enabled               Boolean      @default(true)
+  currentVersion        Int          @map("current_version")
+  createdByMembershipId String?      @map("created_by_membership_id") @db.Uuid
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  dataset   Dataset        @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  createdBy Membership?    @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  revisions RuleRevision[]
+  checkRuns CheckRun[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, datasetId])
+  @@map("quality_rules")
+}
+
+/// Immutable (append-only trigger): a past check points at the exact
+/// definition it ran.
+model RuleRevision {
+  id                    String       @id @default(uuid(7)) @db.Uuid
+  workspaceId           String       @map("workspace_id") @db.Uuid
+  ruleId                String       @map("rule_id") @db.Uuid
+  version               Int
+  /// Validated RuleDefinition JSON (packages/contracts rules.ts).
+  definition            Json
+  severity              RuleSeverity
+  createdByMembershipId String?      @map("created_by_membership_id") @db.Uuid
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  rule      QualityRule @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  createdBy Membership? @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  checkRuns CheckRun[]
+
+  @@unique([ruleId, version])
+  @@unique([workspaceId, id])
+  @@map("rule_revisions")
+}
+
+enum CheckTrigger {
+  manual
+  schedule
+  event
+}
+
+/// Q-04, D-58: insufficient_data is its own state, never a pass.
+enum CheckRunStatus {
+  queued
+  running
+  passed
+  failed
+  insufficient_data
+  error
+}
+
+/// FR-06. Unchangeable once terminal (trigger); the idempotency key keeps
+/// a repeated request from creating a second run.
+model CheckRun {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  workspaceId    String         @map("workspace_id") @db.Uuid
+  ruleId         String         @map("rule_id") @db.Uuid
+  ruleRevisionId String         @map("rule_revision_id") @db.Uuid
+  trigger        CheckTrigger
+  status         CheckRunStatus @default(queued)
+  /// The condition checked, e.g. { maxAgeMinutes }.
+  expected       Json?
+  /// Measured values only; never row samples.
+  actual         Json?
+  /// Safe failure (ConnectorFailure JSON) when status is error.
+  error          Json?
+  idempotencyKey String         @map("idempotency_key")
+  startedAt      DateTime?      @map("started_at") @db.Timestamptz(3)
+  endedAt        DateTime?      @map("ended_at") @db.Timestamptz(3)
+  durationMs     Int?           @map("duration_ms")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  rule     QualityRule  @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  revision RuleRevision @relation(fields: [workspaceId, ruleRevisionId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@unique([workspaceId, idempotencyKey])
+  @@index([workspaceId, ruleId, createdAt])
+  @@map("check_runs")
 }

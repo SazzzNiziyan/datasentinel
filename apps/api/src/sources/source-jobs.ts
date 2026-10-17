@@ -1,11 +1,13 @@
 import {
   DISCOVER_TABLES_JOB,
   PROFILE_DATASET_JOB,
+  RUN_CHECK_JOB,
   SOURCE_QUEUE,
   TEST_CONNECTION_JOB,
   type DiscoverTablesJobData,
   type DiscoveryOutcome,
   type ProfileDatasetJobData,
+  type RunCheckJobData,
   type TestConnectionJobData,
 } from '@datasentinel/contracts';
 import type { OnApplicationShutdown } from '@nestjs/common';
@@ -18,6 +20,7 @@ import { Redis } from 'ioredis';
 export interface SourceJobs {
   enqueueTest(data: TestConnectionJobData): Promise<void>;
   enqueueProfile(data: ProfileDatasetJobData): Promise<void>;
+  enqueueCheck(data: RunCheckJobData): Promise<void>;
   /** Waits for the worker's answer; null when it did not come in time. */
   discover(data: DiscoverTablesJobData, timeoutMs: number): Promise<DiscoveryOutcome | null>;
 }
@@ -50,6 +53,18 @@ export class BullSourceJobs implements SourceJobs, OnApplicationShutdown {
       jobId: data.connectionTestId,
       removeOnComplete: 1000,
       removeOnFail: 5000,
+    });
+  }
+
+  /** The job ID is the run's, so a repeated request cannot queue it twice;
+   * the worker also claims the run only once (D-59). */
+  async enqueueCheck(data: RunCheckJobData): Promise<void> {
+    await this.bull.queue.add(RUN_CHECK_JOB, data, {
+      jobId: `check-${data.checkRunId}`,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: true,
+      removeOnFail: true,
     });
   }
 

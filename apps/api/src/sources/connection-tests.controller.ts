@@ -1,4 +1,9 @@
-import type { ConnectionTestDetail, TableDiscovery, UploadFailure } from '@datasentinel/contracts';
+import type {
+  ConnectionTestDetail,
+  ProfileHistoryEntry,
+  TableDiscovery,
+  UploadFailure,
+} from '@datasentinel/contracts';
 import type { Prisma, PrismaClient } from '@datasentinel/db';
 import { Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
 import { PRISMA } from '../db.js';
@@ -35,6 +40,9 @@ const toDetail = (t: TestRow): ConnectionTestDetail => ({
   createdAt: t.createdAt.toISOString(),
   finishedAt: t.finishedAt?.toISOString() ?? null,
 });
+
+/** Profiles listed in a dataset's history (D-68). */
+const PROFILE_HISTORY = 30;
 
 const conflict = (code: string, title: string, detail: string) =>
   new ProblemException(HttpStatus.CONFLICT, code, title, detail);
@@ -140,6 +148,57 @@ export class ConnectionTestsController {
     await this.testable(workspaceId, dataset.sourceId);
     await this.queue.enqueueProfile({ workspaceId, datasetId });
     return { status: 'queued' };
+  }
+
+  /** A dataset's recent profiles, newest first (D-68): how each row count
+   * was measured, the column count, and whether the schema changed since
+   * the profile before. Any member can read it. */
+  @Get('datasets/:datasetId/profiles')
+  async profiles(
+    @CurrentWorkspace() { workspaceId }: WorkspaceAccess,
+    @Param('datasetId') datasetId: string,
+  ): Promise<ProfileHistoryEntry[]> {
+    const dataset = isUuid(datasetId)
+      ? await this.prisma.dataset.findFirst({
+          where: { id: datasetId, workspaceId },
+          select: { id: true },
+        })
+      : null;
+    if (dataset === null) throw notFound('dataset');
+    // One extra row, so the oldest listed profile has something to compare.
+    const rows = await this.prisma.profileSnapshot.findMany({
+      where: { workspaceId, datasetId },
+      orderBy: { observedAt: 'desc' },
+      take: PROFILE_HISTORY + 1,
+      select: {
+        id: true,
+        status: true,
+        observedAt: true,
+        rowCount: true,
+        rowCountMethod: true,
+        durationMs: true,
+        error: true,
+        schema: { select: { schemaHash: true, columns: true } },
+      },
+    });
+    return rows.slice(0, PROFILE_HISTORY).map((p, i) => {
+      const older = rows.slice(i + 1).find((o) => o.schema !== null)?.schema ?? undefined;
+      return {
+        id: p.id,
+        status: p.status,
+        observedAt: p.observedAt.toISOString(),
+        rowCount: p.rowCount === null ? null : Number(p.rowCount),
+        rowCountMethod:
+          p.rowCountMethod === 'exact' || p.rowCountMethod === 'approximate'
+            ? p.rowCountMethod
+            : null,
+        columnCount: Array.isArray(p.schema?.columns) ? p.schema.columns.length : null,
+        schemaChanged:
+          p.schema == null || older === undefined ? null : p.schema.schemaHash !== older.schemaHash,
+        durationMs: p.durationMs,
+        error: (p.error as UploadFailure | null) ?? null,
+      };
+    });
   }
 
   @Get('connection-tests/:testId')

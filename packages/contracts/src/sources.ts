@@ -65,6 +65,22 @@ export interface ProfileDetail {
   columns: ProfileColumn[];
 }
 
+/** GET …/datasets/{datasetId}/profiles: newest first, at most 30 (D-68). */
+export interface ProfileHistoryEntry {
+  id: string;
+  status: 'succeeded' | 'failed';
+  observedAt: string;
+  rowCount: number | null;
+  /** "approximate" when the row count is the database's estimate. */
+  rowCountMethod: 'exact' | 'approximate' | null;
+  columnCount: number | null;
+  /** Against the next older successful profile; null when there is none
+   * or this attempt failed. */
+  schemaChanged: boolean | null;
+  durationMs: number;
+  error: UploadFailure | null;
+}
+
 /** GET /workspaces/{workspaceId}/datasets/{datasetId} */
 export interface DatasetDetail extends DatasetSummary {
   description: string | null;

@@ -193,3 +193,73 @@ export function validateRuleDefinition(input: unknown): RuleValidation {
     })),
   };
 }
+
+const ruleName = z.string().trim().min(1).max(120);
+
+/** POST …/datasets/{datasetId}/rules (engineer+, audited, D-66). The
+ * definition is checked separately so its problems can be named. */
+export const CreateRuleRequest = z.strictObject({
+  name: ruleName,
+  severity: z.enum(ruleSeverities),
+  enabled: z.boolean().default(true),
+  definition: z.unknown(),
+});
+export type CreateRuleRequest = z.infer<typeof CreateRuleRequest>;
+
+/** PATCH …/rules/{ruleId} (engineer+, audited, D-66). `expectedVersion` is
+ * the version the editor saw; a new definition or severity writes the next
+ * revision. */
+export const UpdateRuleRequest = z
+  .strictObject({
+    expectedVersion: z.number().int().min(1),
+    name: ruleName.optional(),
+    severity: z.enum(ruleSeverities).optional(),
+    enabled: z.boolean().optional(),
+    definition: z.unknown().optional(),
+  })
+  .refine(
+    (r) =>
+      r.name !== undefined ||
+      r.severity !== undefined ||
+      r.enabled !== undefined ||
+      r.definition !== undefined,
+    { message: 'Change at least one field.' },
+  );
+export type UpdateRuleRequest = z.infer<typeof UpdateRuleRequest>;
+
+/** Q-04, D-58: insufficient_data is its own state, never a pass. */
+export type CheckRunStatus =
+  'queued' | 'running' | 'passed' | 'failed' | 'insufficient_data' | 'error';
+
+export interface CheckRunSummary {
+  id: string;
+  /** The rule revision this run checked. */
+  ruleVersion: number;
+  trigger: 'manual' | 'schedule' | 'event';
+  status: CheckRunStatus;
+  /** The condition, e.g. { maxAgeMinutes }; measured values only. */
+  expected: Record<string, unknown> | null;
+  actual: Record<string, unknown> | null;
+  /** Safe failure when status is error. */
+  error: { code: string; message: string; hint?: string; retryable: boolean } | null;
+  createdAt: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  durationMs: number | null;
+}
+
+export interface RuleDetail {
+  id: string;
+  datasetId: string;
+  name: string;
+  type: RuleType;
+  severity: RuleSeverity;
+  enabled: boolean;
+  /** Current revision; send it back as `expectedVersion` when editing. */
+  version: number;
+  definition: RuleDefinition;
+  createdAt: string;
+  updatedAt: string;
+  /** Newest first: up to 20 on the rule, the latest one in lists. */
+  recentRuns: CheckRunSummary[];
+}

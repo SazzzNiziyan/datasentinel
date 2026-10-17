@@ -14,19 +14,17 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
 import { StatusMark, type Tone } from '../components/StatusMark.tsx';
+import { formatCount, formatTime } from '../format.ts';
+import { DatasetRules } from '../rules/DatasetRules.tsx';
 import { UploadCsvDialog } from '../uploads/UploadCsvDialog.tsx';
 import { canEdit, columnTypeLabel, lifecycleLabel } from './labels.ts';
 import { LifecycleActions } from './LifecycleActions.tsx';
+import { ProfileHistory } from './ProfileHistory.tsx';
 import { ProfileNow } from './ProfileNow.tsx';
 import './DatasetDetailPage.css';
 
-const when = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'UTC',
-});
-const at = (iso: string | null) => (iso === null ? 'Never' : `${when.format(new Date(iso))} UTC`);
-const count = (n: number) => n.toLocaleString('en-US');
+const at = formatTime;
+const count = formatCount;
 
 const uploadMark: Record<UploadStatus, { tone: Tone; label: string }> = {
   awaiting_upload: { tone: 'neutral', label: 'Not sent' },
@@ -256,6 +254,22 @@ export function DatasetDetailPage() {
           />
         )}
       </section>
+
+      {workspace !== undefined && (
+        <ProfileHistory workspaceId={workspace.workspaceId} datasetId={d.id} />
+      )}
+
+      {workspace !== undefined && (
+        <DatasetRules
+          workspaceId={workspace.workspaceId}
+          datasetId={d.id}
+          datasetName={d.name}
+          csv={isCsv}
+          active={d.status === 'active'}
+          editable={canEdit(workspace.role) && d.status !== 'archived'}
+          columns={succeeded?.columns ?? []}
+        />
+      )}
 
       <section className="panel" aria-labelledby="uploads-title">
         <h2 id="uploads-title" className="panel__title">

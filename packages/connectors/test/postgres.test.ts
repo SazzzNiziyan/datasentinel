@@ -4,6 +4,12 @@ import {
   ConnectorFailure,
   discoverTables,
   normalizePgType,
+  columnNullCount,
+  duplicateCounts,
+  rangeCounts,
+  tableColumns,
+  tableRowCount,
+  latestTimestamp,
   profilePostgresTable,
   quoteIdent,
   resolveDestination,
@@ -182,6 +188,114 @@ describe('PostgreSQL connections', { skip: await skipReason() }, () => {
     assert.equal(email?.type, 'text');
     assert.equal(email?.nullable, false);
     assert.equal(email?.nullCount, 0);
+  });
+
+  it('reads the newest timestamp, refusing columns that are not dates or times', async () => {
+    const users = { schema: 'public', table: 'users' };
+    const latest = await withPostgres(l.location, l.login, options, (c) =>
+      latestTimestamp(c, users, 'created_at'),
+    );
+    assert.ok(latest === null || latest instanceof Date);
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) => latestTimestamp(c, users, 'email')),
+      'unsupported',
+    );
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) => latestTimestamp(c, users, 'no"such')),
+      'not_found',
+    );
+  });
+
+  it('counts rows and nulls of one column', async () => {
+    const users = { schema: 'public', table: 'users' };
+    const counts = await withPostgres(l.location, l.login, options, (c) =>
+      columnNullCount(c, users, 'email'),
+    );
+    assert.equal(counts.nullCount, 0);
+    assert.ok(counts.rowCount >= 0);
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) => columnNullCount(c, users, 'nope')),
+      'not_found',
+    );
+  });
+
+  it('counts duplicate keys without reading key values', async () => {
+    const users = { schema: 'public', table: 'users' };
+    const unique = await withPostgres(l.location, l.login, options, (c) =>
+      duplicateCounts(c, users, ['email']),
+    );
+    assert.equal(unique.duplicateRows, 0);
+    assert.equal(unique.duplicateKeys, 0);
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) =>
+        duplicateCounts(c, users, ['email', 'nope']),
+      ),
+      'not_found',
+    );
+  });
+
+  it('counts a table exactly while it is small', async () => {
+    const count = await withPostgres(l.location, l.login, options, (c) =>
+      tableRowCount(c, { schema: 'public', table: 'users' }),
+    );
+    assert.equal(count.method, 'exact');
+    assert.ok(count.rowCount >= 0);
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) =>
+        tableRowCount(c, { schema: 'public', table: 'no_such' }),
+      ),
+      'not_found',
+    );
+  });
+
+  it('counts values outside a date range, refusing mismatched kinds', async () => {
+    const users = { schema: 'public', table: 'users' };
+    const all = await withPostgres(l.location, l.login, options, (c) =>
+      rangeCounts(c, users, 'created_at', {
+        kind: 'time',
+        low: '2000-01-01T00:00:00.000Z',
+        high: null,
+        highInclusive: true,
+      }),
+    );
+    assert.equal(all.belowMin, 0);
+    assert.equal(all.aboveMax, 0);
+    const future = await withPostgres(l.location, l.login, options, (c) =>
+      rangeCounts(c, users, 'created_at', {
+        kind: 'time',
+        low: '2999-01-01T00:00:00.000Z',
+        high: null,
+        highInclusive: true,
+      }),
+    );
+    assert.equal(future.belowMin, future.valuesChecked);
+    const mismatch = { kind: 'number' as const, low: 0, high: null, highInclusive: true };
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) =>
+        rangeCounts(c, users, 'created_at', mismatch),
+      ),
+      'invalid_config',
+    );
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) => rangeCounts(c, users, 'email', mismatch)),
+      'unsupported',
+    );
+  });
+
+  it('lists the columns of a table without reading rows', async () => {
+    const columns = await withPostgres(l.location, l.login, options, (c) =>
+      tableColumns(c, { schema: 'public', table: 'users' }),
+    );
+    assert.deepEqual(
+      columns.find((c) => c.name === 'email'),
+      { name: 'email', type: 'text', nullable: false },
+    );
+    await failsWith(
+      withPostgres(l.location, l.login, options, (c) =>
+        tableColumns(c, { schema: 'public', table: 'no_such' }),
+      ),
+      'not_found',
+    );
   });
 
   it('reports a missing table as not_found, even with quotes in its name', async () => {

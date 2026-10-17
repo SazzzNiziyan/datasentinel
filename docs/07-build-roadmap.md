@@ -9,7 +9,7 @@ Keep this section current after every item so another agent can continue.
 - **Last updated:** 2026-10-17. **Done:** 64 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phase G is complete; next is Phase H). Decisions D-01 to D-58 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phase G is complete; next is Phase H). Decisions D-01 to D-68 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -29,14 +29,14 @@ There is no need to install a backend plugin tied to a different stack such as C
 
 Paste this at the start of a build session, then name only one unchecked task:
 
-> We are building the complete DataSentinel product described in `README.md` and `docs/`. Our stack is React + TypeScript, NestJS + TypeScript, PostgreSQL + Prisma, Redis + BullMQ, and private S3-compatible storage. Follow the Bauhaus rules in `docs/06-design-system.md`. Implement only this task: **[copy one unchecked item]**. First tell me the goal, terms, files likely to change, and how this task fits the architecture. Keep the change small. Explain what you changed and how I can verify it. Do not skip security, tenant isolation, or human approval rules. Stop after this task and wait for me to say ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œnext.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+> We are building the complete DataSentinel product described in `README.md` and `docs/`. Our stack is React + TypeScript, NestJS + TypeScript, PostgreSQL + Prisma, Redis + BullMQ, and private S3-compatible storage. Follow the Bauhaus rules in `docs/06-design-system.md`. Implement only this task: **[copy one unchecked item]**. First tell me the goal, terms, files likely to change, and how this task fits the architecture. Keep the change small. Explain what you changed and how I can verify it. Do not skip security, tenant isolation, or human approval rules. Stop after this task and wait for me to say “next.”
 
 When using `/feature-dev`, use it for the bounded task above. For a visual task, ask Frontend Design to use the existing tokens and screen rules; do not let it invent a different visual system.
 
-## 2. Phase A ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Requirements and decisions
+## 2. Phase A — Requirements and decisions
 
 - [x] Create the repository and copy this documentation into its `docs/` folder.
-- [x] Read the product specification and mark any requirement that is unclear (see spec Ãƒâ€šÃ‚Â§9).
+- [x] Read the product specification and mark any requirement that is unclear (see spec §9).
 - [x] Decide whether sign-in starts with email/password, an identity provider, or both.
 - [x] Decide the initial workspace roles and whether analysts may acknowledge/comment on incidents.
 - [ ] Decide the first deployment region and hosting provider before production configuration.
@@ -48,7 +48,7 @@ When using `/feature-dev`, use it for the bounded task above. For a visual task,
 
 **Phase gate:** scope and policy decisions are written down; unresolved deployment decisions are labeled as open.
 
-## 3. Phase B ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Repository and local development foundation
+## 3. Phase B — Repository and local development foundation
 
 - [x] Initialize Git and add a `.gitignore` for Node builds, local databases, secrets, uploads, and editor files.
 - [x] Select a supported Node LTS version and pin it for local/CI use (Node 26: `.nvmrc`, `engines`, `engineStrict`).
@@ -65,7 +65,7 @@ When using `/feature-dev`, use it for the bounded task above. For a visual task,
 
 Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `pnpm check`; no credentials are committed. The apps are still placeholders, so "start" means each entry point runs; real start commands arrive with the Nest and Vite scaffolds. Use `pnpm clean` (root script) to remove build output; `pnpm -r clean` is pnpm's built-in that deletes every `node_modules`.
 
-## 4. Phase C ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Bauhaus UI foundation
+## 4. Phase C — Bauhaus UI foundation
 
 - [x] Install Frontend Design and provide it `docs/06-design-system.md`. (plugin active; React + Vite scaffold added)
 - [x] Create design tokens for ink, paper, surfaces, signal colors, borders, typography, and spacing. (D-15; contrast enforced by tests)
@@ -80,7 +80,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** users can navigate a coherent, responsive interface; every state is visibly sample or connected.
 
-## 5. Phase D ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Local services and backend skeleton
+## 5. Phase D — Local services and backend skeleton
 
 - [x] Add local PostgreSQL to the development container setup. (D-21; `compose.yaml`)
 - [x] Add local Redis to the same setup. (D-21)
@@ -94,7 +94,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** local services start and stop predictably; health checks identify each dependency.
 
-## 6. Phase E ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Database and workspace access
+## 6. Phase E — Database and workspace access
 
 - [x] Create the initial Prisma schema for users, sessions, workspaces, and memberships. (D-26; `packages/db`)
 - [x] Create and apply the first migration locally. (D-26; `pnpm --filter @datasentinel/db migrate:dev`)
@@ -112,7 +112,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** workspace-scoped access works in API and UI; every tenant-owned route checks membership.
 
-## 7. Phase F ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Data sources and CSV ingestion
+## 7. Phase F — Data sources and CSV ingestion
 
 - [x] Define the connector interface and normalized safe error format. (D-35; `packages/connectors`)
 - [x] Add source and dataset metadata models and migrations. (D-36)
@@ -128,7 +128,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** a user can upload a CSV, register a dataset, and view a safe profile without loading the whole file into browser memory.
 
-## 8. Phase G ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â PostgreSQL monitoring connector
+## 8. Phase G — PostgreSQL monitoring connector
 
 - [x] Define source credential encryption and key-version handling. (D-46)
 - [x] Add the PostgreSQL source form and keep secret fields write-only. (D-47)
@@ -144,27 +144,27 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** an authorized read-only PostgreSQL source can be checked without unbounded query or network behavior.
 
-## 9. Phase H ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Profiles, schema drift, and rules
+## 9. Phase H — Profiles, schema drift, and rules
 
 - [x] Define immutable profile and schema snapshot models. (D-43: append-only triggers)
 - [x] Store exact/approximate method and observation time for each profile metric. (D-56)
 - [x] Compare schema snapshots and produce added/removed/type-changed fields. (D-57)
 - [x] Implement rule definition validation with versioned schemas. (D-58; answers Q-02, Q-04, Q-05)
-- [ ] Add the freshness rule.
-- [ ] Add the not-null rule.
-- [ ] Add the uniqueness/duplicate rule with an explicit scan-cost limit.
-- [ ] Add minimum/maximum row-count rules.
-- [ ] Add range rules for supported numeric/date types.
-- [ ] Add schema-required-column/type rules.
-- [ ] Add configurable row-count/metric change rules against 7/30-day history.
-- [ ] Return `insufficient_data` when baseline history is too short.
-- [ ] Save a rule revision whenever definition/severity changes.
-- [ ] Build the rule builder with a plain-language preview and validation state.
-- [ ] Display profile and check history with method, units, and comparison window.
+- [x] Add the freshness rule. (D-59)
+- [x] Add the not-null rule. (D-60)
+- [x] Add the uniqueness/duplicate rule with an explicit scan-cost limit. (D-61)
+- [x] Add minimum/maximum row-count rules. (D-62)
+- [x] Add range rules for supported numeric/date types. (D-63)
+- [x] Add schema-required-column/type rules. (D-64)
+- [x] Add configurable row-count/metric change rules against 7/30-day history. (D-65)
+- [x] Return `insufficient_data` when baseline history is too short. (D-65)
+- [x] Save a rule revision whenever definition/severity changes. (D-66)
+- [x] Build the rule builder with a plain-language preview and validation state. (D-67)
+- [x] Display profile and check history with method, units, and comparison window. (D-68)
 
 **Phase gate:** each supported rule has a deterministic result, a revision, a visible history entry, and a bounded query strategy.
 
-## 10. Phase I ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Scheduling and pipeline-run history
+## 10. Phase I — Scheduling and pipeline-run history
 
 - [ ] Define schedule schema, timezone behavior, and allowed minimum interval.
 - [ ] Add the scheduler process and unique schedule-occurrence key.
@@ -179,7 +179,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** scheduled and event-triggered jobs are durable, idempotent, and understandable from the UI.
 
-## 11. Phase J ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Incidents and evidence
+## 11. Phase J — Incidents and evidence
 
 - [ ] Define incident deduplication key and grouping window.
 - [ ] Create an incident on a qualifying failed check in a transaction-safe flow.
@@ -194,7 +194,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** one data problem is traceable from rule revision through check run, incident, evidence, owner, and resolution.
 
-## 12. Phase K ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Alerts and integrations
+## 12. Phase K — Alerts and integrations
 
 - [ ] Define typed integration and alert-destination configuration.
 - [ ] Add email delivery adapter with safe templates and delivery records.
@@ -209,7 +209,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** delivery failures are visible and retryable; each integration has bounded permissions and audited configuration.
 
-## 13. Phase L ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AI investigation and documentation retrieval
+## 13. Phase L — AI investigation and documentation retrieval
 
 - [ ] Decide whether AI is enabled globally and per workspace; record provider, region, and retention policy.
 - [ ] Define the structured investigation report schema.
@@ -227,7 +227,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** AI is advisory, evidence-linked, redacted, auditable, and non-blocking for core checks/incidents.
 
-## 14. Phase M ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Approved recovery actions
+## 14. Phase M — Approved recovery actions
 
 - [ ] Define typed action schemas for validation rerun, supported demo/import retry, notification, GitHub issue, and n8n trigger.
 - [ ] Create action proposal and exact payload preview.
@@ -240,7 +240,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 **Phase gate:** no action starts without a current valid approval, and every result is attributable.
 
-## 15. Phase N ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Finish, harden, deploy, and operate
+## 15. Phase N — Finish, harden, deploy, and operate
 
 - [ ] Review all API routes for permission and workspace checks.
 - [ ] Review all logs, job payloads, errors, and AI inputs for secrets/raw data.
@@ -270,4 +270,4 @@ For every checkbox:
 6. Use Frontend Design only for interface work and provide the design-system document.
 7. Review the diff and ask Claude to explain every changed file.
 8. Verify the visible behavior locally before checking off the item.
-9. Update this roadmap and continue only when you say ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œnext.ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+9. Update this roadmap and continue only when you say “next.”

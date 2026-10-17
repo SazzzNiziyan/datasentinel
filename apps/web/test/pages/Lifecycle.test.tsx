@@ -106,7 +106,11 @@ describe('Source actions', () => {
 });
 
 describe('Dataset actions', () => {
-  const uploads = { 'GET /workspaces/w1/uploads?datasetId=d9': () => [] };
+  const uploads = {
+    'GET /workspaces/w1/uploads?datasetId=d9': () => [],
+    'GET /workspaces/w1/datasets/d9/rules': () => [],
+    'GET /workspaces/w1/datasets/d9/profiles': () => [],
+  };
 
   it('shows the status and why a resume was refused', async () => {
     const user = userEvent.setup();
