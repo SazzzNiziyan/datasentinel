@@ -5,6 +5,7 @@ import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
+import { PARSE_UPLOAD_DEPS } from '../src/queue/upload-queue.service.js';
 import { WorkerModule } from '../src/worker.module.js';
 
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
@@ -40,7 +41,11 @@ describe('worker round trip through Redis', { skip }, () => {
     // Boots the real module graph, so a broken injection fails here.
     moduleRef = await Test.createTestingModule({
       imports: [WorkerModule.register({ logLevel: 'silent', redisUrl })],
-    }).compile();
+    })
+      // Upload jobs need the database and storage; this test does not.
+      .overrideProvider(PARSE_UPLOAD_DEPS)
+      .useValue({ prisma: { $disconnect: () => Promise.resolve() }, open: () => null })
+      .compile();
     await moduleRef.init();
     queue = new Queue(SYSTEM_QUEUE, { connection: { url: redisUrl } });
     events = new QueueEvents(SYSTEM_QUEUE, { connection: { url: redisUrl } });

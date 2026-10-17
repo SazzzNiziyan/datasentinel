@@ -1,0 +1,186 @@
+/* Same frame as the confirm dialog: ink border and a hard offset shadow. */
+.upload-dialog {
+  width: min(36rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-6);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--space-2) var(--space-2) 0 var(--color-border-strong);
+}
+
+.upload-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.upload-dialog__title {
+  font-size: var(--text-heading);
+  margin-bottom: var(--space-6);
+}
+
+.upload-dialog__form,
+.upload-dialog__none {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.upload-dialog__fields {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.upload-dialog__field,
+.upload-dialog__choice {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.upload-dialog__choice {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.upload-dialog__choice legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+.upload-dialog__field .text-input,
+.upload-dialog__choice .text-input,
+.upload-dialog__option {
+  font-weight: var(--weight-regular);
+}
+
+.upload-dialog__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  font-size: var(--text-body);
+}
+
+.upload-dialog__option input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-action-primary);
+}
+
+.upload-dialog__help {
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}
+
+/* The sequence is the one strong element: a ruled list, one row per step,
+ * with the step number set large in the left column. */
+.upload-dialog__steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  border-top: var(--border-width) solid var(--color-border-strong);
+}
+
+.upload-dialog__step {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-divider);
+  counter-increment: step;
+}
+
+.upload-dialog__step::before {
+  content: counter(step);
+  grid-row: span 2;
+  align-self: start;
+  font-size: var(--text-heading);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-tight);
+}
+
+.upload-dialog__step[data-tone='neutral'] {
+  color: var(--color-text-muted);
+}
+
+.upload-dialog__step-label {
+  font-weight: var(--weight-strong);
+}
+
+.upload-dialog__step .status-mark {
+  font-size: var(--text-compact);
+}
+
+.upload-dialog__progress {
+  grid-column: 2 / -1;
+  width: 100%;
+  height: var(--space-2);
+  appearance: none;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: 0;
+  background: var(--color-bg);
+}
+
+.upload-dialog__progress::-webkit-progress-bar {
+  background: var(--color-bg);
+}
+
+.upload-dialog__progress::-webkit-progress-value {
+  background: var(--color-action-primary);
+}
+
+.upload-dialog__progress::-moz-progress-bar {
+  background: var(--color-action-primary);
+}
+
+.upload-dialog__result:empty {
+  display: none;
+}
+
+.upload-dialog__result {
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-healthy);
+  background: var(--color-bg);
+}
+
+.upload-dialog__error {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-critical);
+  background: var(--color-bg);
+}
+
+.upload-dialog__error-title {
+  font-weight: var(--weight-strong);
+}
+
+.upload-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+@media (max-width: 30rem) {
+  .upload-dialog {
+    padding: var(--space-4);
+  }
+
+  .upload-dialog__step {
+    grid-template-columns: 2rem 1fr;
+  }
+
+  .upload-dialog__step .status-mark {
+    grid-column: 2;
+  }
+}

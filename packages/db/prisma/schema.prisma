@@ -247,9 +247,11 @@ model Dataset {
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  source  DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
-  owner   Membership? @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
-  uploads Upload[]
+  source           DataSource        @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  owner            Membership?       @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  uploads          Upload[]
+  profileSnapshots ProfileSnapshot[]
+  schemaSnapshots  SchemaSnapshot[]
 
   @@unique([workspaceId, sourceId, stableKey])
   /// Target of composite foreign keys that keep uploads in the same source.
@@ -308,6 +310,9 @@ model Upload {
   status                UploadStatus @default(awaiting_upload)
   /// Safe failure (ConnectorFailure JSON), never a raw error.
   error                 Json?
+  /// Set when parsing succeeds: data rows (header excluded) and columns.
+  rowCount              Int?         @map("row_count")
+  columnCount           Int?         @map("column_count")
   createdByMembershipId String       @map("created_by_membership_id") @db.Uuid
   uploadUrlExpiresAt    DateTime     @map("upload_url_expires_at") @db.Timestamptz(3)
   completedAt           DateTime?    @map("completed_at") @db.Timestamptz(3)
@@ -316,13 +321,76 @@ model Upload {
   createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  source    DataSource @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  source           DataSource        @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
   /// Cascade: datasets and memberships are archived or removed by status, so
   /// rows are deleted only with their workspace, in any order.
-  dataset   Dataset?   @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade, onUpdate: NoAction)
-  createdBy Membership @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: Cascade, onUpdate: NoAction)
+  dataset          Dataset?          @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade, onUpdate: NoAction)
+  profileSnapshots ProfileSnapshot[]
+  createdBy        Membership        @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([workspaceId, sourceId, createdAt])
   @@index([retainUntil])
   @@map("uploads")
+}
+
+enum ProfileStatus {
+  succeeded
+  failed
+}
+
+/// One profiling attempt of a dataset (docs/03, D-43). Append-only: a
+/// trigger refuses UPDATE. A failed attempt keeps its safe error instead of
+/// looking like an empty dataset (FR-04).
+model ProfileSnapshot {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  workspaceId    String        @map("workspace_id") @db.Uuid
+  sourceId       String        @map("source_id") @db.Uuid
+  datasetId      String        @map("dataset_id") @db.Uuid
+  /// The CSV upload that was profiled; null for other source types.
+  uploadId       String?       @map("upload_id") @db.Uuid
+  status         ProfileStatus
+  observedAt     DateTime      @map("observed_at") @db.Timestamptz(3)
+  /// Null when the attempt failed.
+  rowCount       BigInt?       @map("row_count")
+  /// "exact" or "approximate" (a planner estimate).
+  rowCountMethod String?       @map("row_count_method")
+  /// When the data last changed; for CSV, the upload time (D-10).
+  lastUpdatedAt  DateTime?     @map("last_updated_at") @db.Timestamptz(3)
+  /// Per-column metrics such as null counts; never sample values.
+  metrics        Json          @default("{}")
+  /// Safe failure (ConnectorFailure JSON) when status is failed.
+  error          Json?
+  durationMs     Int           @map("duration_ms")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  dataset Dataset         @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  upload  Upload?         @relation(fields: [uploadId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  schema  SchemaSnapshot?
+
+  @@index([workspaceId, datasetId, observedAt])
+  @@index([uploadId])
+  @@map("profile_snapshots")
+}
+
+/// The columns a successful profile saw (docs/03, D-43). Append-only. The
+/// hash covers names, types, and order, so equal hashes mean no drift.
+model SchemaSnapshot {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  workspaceId       String   @map("workspace_id") @db.Uuid
+  sourceId          String   @map("source_id") @db.Uuid
+  datasetId         String   @map("dataset_id") @db.Uuid
+  profileSnapshotId String   @unique @map("profile_snapshot_id") @db.Uuid
+  observedAt        DateTime @map("observed_at") @db.Timestamptz(3)
+  /// Lowercase hex SHA-256 of the ordered (name, type) list.
+  schemaHash        String   @map("schema_hash")
+  /// ObservedColumn[]: name, type, nullable, ordinal. No sample values.
+  columns           Json
+  rowCount          BigInt   @map("row_count")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  dataset Dataset         @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  profile ProfileSnapshot @relation(fields: [profileSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, datasetId, observedAt])
+  @@map("schema_snapshots")
 }

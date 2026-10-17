@@ -6,10 +6,10 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 47 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is partly done.
+- **Last updated:** 2026-10-17. **Done:** 51 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is partly done.
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (the rest of Phase F: enforce limits in the worker and streaming CSV parsing). Decisions D-01 to D-41 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (the rest of Phase F: pause, resume, and archive for sources and datasets). Decisions D-01 to D-44 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -117,13 +117,13 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Define the connector interface and normalized safe error format. (D-35; `packages/connectors`)
 - [x] Add source and dataset metadata models and migrations. (D-36)
 - [x] Add source and dataset list/detail API routes with workspace authorization. (D-37)
-- [ ] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); **the add-source flow is waiting** on the PostgreSQL connector (Phase G) for "validate" and on D-08 for uploads and schedules.
+- [ ] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); adding a CSV source and uploading files works (D-44). **Still waiting:** the PostgreSQL branch needs its connector (Phase G) for "validate", and schedules come with Phase I.
 - [x] Add private object storage configuration and random object keys. (D-38)
 - [x] Add upload initiation and completion endpoints. (D-41)
-- [ ] Enforce file-size, row-size, encoding, and content validation limits. (D-08: 50 MB, UTF-8, 1,000 columns, 1 MB rows)
-- [ ] Add streaming CSV parsing in the worker; reject malformed/oversized input safely.
-- [ ] Save an initial CSV profile and schema snapshot.
-- [ ] Show upload status, parse errors, and profile results in the UI.
+- [x] Enforce file-size, row-size, encoding, and content validation limits. (D-08: 50 MB, UTF-8, 1,000 columns, 1 MB rows; D-42)
+- [x] Add streaming CSV parsing in the worker; reject malformed/oversized input safely. (D-42)
+- [x] Save an initial CSV profile and schema snapshot. (D-43)
+- [x] Show upload status, parse errors, and profile results in the UI. (D-44)
 - [ ] Add pause, resume, and archive behavior for sources/datasets.
 
 **Phase gate:** a user can upload a CSV, register a dataset, and view a safe profile without loading the whole file into browser memory.

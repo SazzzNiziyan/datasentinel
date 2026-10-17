@@ -5,7 +5,17 @@ import {
   type UploadFailure,
 } from '@datasentinel/contracts';
 import { Prisma, type PrismaClient } from '@datasentinel/db';
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CurrentRequest, recordAudit, type RequestMeta } from '../audit/audit.js';
 import { CurrentPrincipal, type Principal } from '../auth/session.guard.js';
 import { PRISMA } from '../db.js';
@@ -80,6 +90,8 @@ const uploadSelect = {
   sizeBytes: true,
   status: true,
   error: true,
+  rowCount: true,
+  columnCount: true,
   createdAt: true,
   completedAt: true,
 } as const;
@@ -95,6 +107,8 @@ const toDetail = (u: UploadRow): UploadDetail => ({
   sizeBytes: u.sizeBytes,
   status: u.status,
   error: (u.error as UploadFailure | null) ?? null,
+  rowCount: u.rowCount,
+  columnCount: u.columnCount,
   createdAt: u.createdAt.toISOString(),
   completedAt: u.completedAt?.toISOString() ?? null,
 });
@@ -296,6 +310,29 @@ export class UploadsController {
     if (done === null) return this.detail(access, uploadId);
     await this.queue.enqueueParse(job);
     return toDetail(done);
+  }
+
+  /** The 20 newest uploads, for a dataset or a source (any member). An ID
+   * that is malformed or from another workspace matches nothing. */
+  @Get('uploads')
+  async list(
+    @CurrentWorkspace() access: WorkspaceAccess,
+    @Query('datasetId') datasetId?: string,
+    @Query('sourceId') sourceId?: string,
+  ): Promise<UploadDetail[]> {
+    const only = (id: string | undefined) =>
+      id === undefined ? undefined : { in: isUuid(id) ? [id] : [] };
+    const rows = await this.prisma.upload.findMany({
+      where: {
+        workspaceId: access.workspaceId,
+        datasetId: only(datasetId),
+        sourceId: only(sourceId),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 20,
+      select: uploadSelect,
+    });
+    return rows.map(toDetail);
   }
 
   @Get('uploads/:uploadId')

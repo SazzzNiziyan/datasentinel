@@ -1,15 +1,25 @@
-import type {
-  DatasetDetail,
-  DatasetSummary,
-  LifecycleStatus,
-  SourceDetail,
-  SourceSummary,
+import {
+  CreateSourceRequest,
+  type DatasetDetail,
+  type DatasetSummary,
+  type LifecycleStatus,
+  type ProfileDetail,
+  type SourceDetail,
+  type SourceSummary,
+  type UploadFailure,
 } from '@datasentinel/contracts';
-import type { Prisma, PrismaClient } from '@datasentinel/db';
-import { Controller, Get, HttpStatus, Inject, Param, Query } from '@nestjs/common';
+import { Prisma, type PrismaClient } from '@datasentinel/db';
+import { Body, Controller, Get, HttpStatus, Inject, Param, Post, Query } from '@nestjs/common';
+import { CurrentRequest, recordAudit, type RequestMeta } from '../audit/audit.js';
+import { CurrentPrincipal, type Principal } from '../auth/session.guard.js';
 import { PRISMA } from '../db.js';
 import { ProblemException } from '../problem.js';
-import { CurrentWorkspace, isUuid, type WorkspaceAccess } from '../workspaces/workspace.guard.js';
+import {
+  CurrentWorkspace,
+  isUuid,
+  RequireRole,
+  type WorkspaceAccess,
+} from '../workspaces/workspace.guard.js';
 
 const notFound = (what: 'source' | 'dataset') =>
   new ProblemException(
@@ -68,6 +78,44 @@ const toDatasetSummary = (d: DatasetRow): DatasetSummary => ({
   sensitivity: d.sensitivity,
 });
 
+const profileSelect = {
+  id: true,
+  status: true,
+  observedAt: true,
+  rowCount: true,
+  lastUpdatedAt: true,
+  error: true,
+  metrics: true,
+} as const;
+
+type ProfileRow = Prisma.ProfileSnapshotGetPayload<{ select: typeof profileSelect }>;
+
+/** Metrics hold `columns: [{name, type, nullCount}]` in file order (D-43). */
+function profileColumns(metrics: Prisma.JsonValue): ProfileDetail['columns'] {
+  const columns = asObject(metrics).columns;
+  if (!Array.isArray(columns)) return [];
+  return columns.map((c, i) => {
+    const column = asObject(c as Prisma.JsonValue);
+    return {
+      name: typeof column.name === 'string' ? column.name : '',
+      type: typeof column.type === 'string' ? column.type : 'unknown',
+      nullCount: typeof column.nullCount === 'number' ? column.nullCount : 0,
+      ordinal: i + 1,
+    };
+  });
+}
+
+const toProfileDetail = (p: ProfileRow): ProfileDetail => ({
+  id: p.id,
+  status: p.status,
+  observedAt: p.observedAt.toISOString(),
+  // Counts stay far below 2^53; bigint does not serialize to JSON.
+  rowCount: p.rowCount === null ? null : Number(p.rowCount),
+  lastUpdatedAt: p.lastUpdatedAt?.toISOString() ?? null,
+  error: (p.error as UploadFailure | null) ?? null,
+  columns: profileColumns(p.metrics),
+});
+
 const statuses: readonly string[] = ['active', 'paused', 'archived'] satisfies LifecycleStatus[];
 
 /** Read routes for sources and datasets; any member may read (docs/04 §3).
@@ -94,6 +142,60 @@ export class SourcesController {
       select: sourceSelect,
     });
     return rows.map(toSourceSummary);
+  }
+
+  /** Only CSV sources so far (D-44); PostgreSQL waits for its connector. */
+  @RequireRole('engineer')
+  @Post('sources')
+  async createSource(
+    @CurrentWorkspace() access: WorkspaceAccess,
+    @CurrentPrincipal() principal: Principal,
+    @CurrentRequest() request: RequestMeta,
+    @Body() body: unknown,
+  ): Promise<SourceSummary> {
+    const input = CreateSourceRequest.safeParse(body);
+    if (!input.success) {
+      throw new ProblemException(
+        HttpStatus.BAD_REQUEST,
+        'invalid_request',
+        'Enter a name for the CSV source.',
+        'Only CSV sources can be added so far.',
+      );
+    }
+    const { name, type } = input.data;
+    try {
+      const created = await this.prisma.$transaction(async (tx) => {
+        const source = await tx.dataSource.create({
+          data: {
+            workspaceId: access.workspaceId,
+            name,
+            type,
+            ownerMembershipId: access.membershipId,
+          },
+          select: sourceSelect,
+        });
+        await recordAudit(tx, {
+          action: 'source.created',
+          actor: { type: 'user', id: principal.userId },
+          request,
+          workspaceId: access.workspaceId,
+          target: { type: 'source', id: source.id },
+          summary: { after: { name, type } },
+        });
+        return source;
+      });
+      return toSourceSummary(created);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ProblemException(
+          HttpStatus.CONFLICT,
+          'source_name_taken',
+          'A source with this name already exists.',
+          'Choose another name.',
+        );
+      }
+      throw error;
+    }
   }
 
   @Get('sources/:sourceId')
@@ -155,15 +257,27 @@ export class SourcesController {
         locator: true,
         createdAt: true,
         owner: ownerSelect,
+        profileSnapshots: { orderBy: { observedAt: 'desc' }, take: 1, select: profileSelect },
       },
     });
     if (d === null) throw notFound('dataset');
+    const latest = d.profileSnapshots[0];
+    const good =
+      latest === undefined || latest.status === 'succeeded'
+        ? latest
+        : await this.prisma.profileSnapshot.findFirst({
+            where: { workspaceId: access.workspaceId, datasetId: d.id, status: 'succeeded' },
+            orderBy: { observedAt: 'desc' },
+            select: profileSelect,
+          });
     return {
       ...toDatasetSummary(d),
       description: d.description,
       ownerName: d.owner?.user.displayName ?? null,
       locator: asObject(d.locator),
       createdAt: d.createdAt.toISOString(),
+      latestProfile: latest === undefined ? null : toProfileDetail(latest),
+      lastSuccessfulProfile: good == null ? null : toProfileDetail(good),
     };
   }
 }

@@ -1,0 +1,58 @@
+/* Facts in one ruled strip, label above value. Each cell draws its own
+ * outline into the 1px gaps (clipped at the frame), so the rules stay right
+ * however the strip wraps, and an empty last slot stays plain. */
+.dataset-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--border-width);
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+}
+
+.dataset-summary > div {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  box-shadow: 0 0 0 var(--border-width) var(--color-divider);
+}
+
+.dataset-summary dt {
+  font-size: var(--text-compact);
+  color: var(--color-text-muted);
+}
+
+.dataset-summary dd {
+  margin: 0;
+  font-size: var(--text-heading);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-tight);
+}
+
+@media (max-width: 39.99rem) {
+  .dataset-summary dd {
+    font-size: var(--text-body);
+  }
+}
+
+.dataset-profile__failed {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-critical);
+  background: var(--color-surface);
+}
+
+/* Keeps the message readable when the table scrolls sideways on phones. */
+.dataset-uploads__problem {
+  min-width: 16rem;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.dataset-uploads__hint {
+  font-size: var(--text-helper);
+  color: var(--color-text-muted);
+}

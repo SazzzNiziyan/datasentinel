@@ -182,4 +182,18 @@ describe('upload API', { skip }, () => {
     const clash = await t.start({ datasetId: undefined, newDatasetName: 'daily sales' });
     assert.equal(clash.status, 409);
   });
+
+  it('lists recent uploads, newest first, for a dataset or source', async () => {
+    const t = await tenant();
+    const first = await started(t);
+    const second = await started(t, { filename: 'second.csv' });
+    const list = async (query: string) =>
+      ((await (await t.call('GET', `/uploads${query}`)).json()) as { id: string }[]).map(
+        (u) => u.id,
+      );
+    assert.deepEqual(await list(`?datasetId=${t.dataset.id}`), [second.id, first.id]);
+    assert.deepEqual(await list(`?sourceId=${t.source.id}`), [second.id, first.id]);
+    assert.deepEqual(await list(`?datasetId=${randomUUID()}`), []);
+    assert.deepEqual(await list('?datasetId=nope'), []);
+  });
 });

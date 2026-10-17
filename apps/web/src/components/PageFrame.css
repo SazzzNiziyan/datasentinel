@@ -71,3 +71,10 @@
     font-size: var(--text-heading);
   }
 }
+
+/* The page's main action, above its content. */
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

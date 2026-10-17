@@ -45,6 +45,9 @@ export interface UploadDetail {
   sizeBytes: number;
   status: UploadStatus;
   error: UploadFailure | null;
+  /** Set once parsing succeeds; the header row is not counted. */
+  rowCount: number | null;
+  columnCount: number | null;
   createdAt: string;
   completedAt: string | null;
 }

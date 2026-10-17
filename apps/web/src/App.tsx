@@ -5,6 +5,7 @@ import { RequireSession } from './app/RequireSession.tsx';
 import { SessionProvider } from './app/SessionProvider.tsx';
 import { primaryNav, secondaryNav } from './app/navigation.ts';
 import { LoadingState } from './components/LoadingState.tsx';
+import { DatasetDetailPage } from './pages/DatasetDetailPage.tsx';
 import { DatasetsPage } from './pages/DatasetsPage.tsx';
 import { IncidentsPage } from './pages/IncidentsPage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
@@ -54,6 +55,7 @@ export function App() {
                 element={screens[item.path] ?? <PendingPage item={item} />}
               />
             ))}
+            <Route path="/datasets/:datasetId" element={<DatasetDetailPage />} />
             {ComponentGallery !== null && (
               <Route
                 path="/dev/components"

@@ -30,7 +30,7 @@ dump.rdb
 
 # Uploads and sample files that may hold real data
 uploads/
-!apps/api/src/uploads/
+!apps/*/src/uploads/
 tmp/
 *.csv
 !**/fixtures/**/*.csv

@@ -1,4 +1,4 @@
-import type { LifecycleStatus, Sensitivity, SourceType } from '@datasentinel/contracts';
+import type { LifecycleStatus, Role, Sensitivity, SourceType } from '@datasentinel/contracts';
 
 /** Words for API values, as users say them (docs/06 sentence case). */
 export const sourceTypeLabel: Record<SourceType, string> = {
@@ -21,3 +21,21 @@ export const sensitivityLabel: Record<Sensitivity, string> = {
   confidential: 'Confidential',
   restricted: 'Restricted',
 };
+
+const columnTypes: Record<string, string> = {
+  boolean: 'True/false',
+  integer: 'Whole number',
+  decimal: 'Decimal number',
+  date: 'Date',
+  timestamp: 'Date and time',
+  text: 'Text',
+  unknown: 'Unknown (all empty)',
+};
+
+/** Inferred column types (D-43) in plain words; unexpected ones as given. */
+export const columnTypeLabel = (type: string): string => columnTypes[type] ?? type;
+
+const RANK: Record<Role, number> = { viewer: 0, analyst: 1, engineer: 2, admin: 3, owner: 4 };
+
+/** Data engineers and above change sources, datasets, and uploads (D-02). */
+export const canEdit = (role: Role): boolean => RANK[role] >= RANK.engineer;
