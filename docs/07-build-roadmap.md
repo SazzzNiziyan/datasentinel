@@ -6,10 +6,10 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 45 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is partly done.
+- **Last updated:** 2026-10-17. **Done:** 47 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is partly done.
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (the rest of Phase F: upload limits, then uploads). Decisions D-01 to D-39 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (the rest of Phase F: enforce limits in the worker and streaming CSV parsing). Decisions D-01 to D-41 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -43,7 +43,7 @@ When using `/feature-dev`, use it for the bounded task above. For a visual task,
 - [ ] Select the production object-storage provider and secret manager.
 - [ ] Select an email provider and decide whether Slack/webhook integrations are enabled at first launch.
 - [ ] Select the LLM provider, model, region, retention controls, and workspace opt-out behavior for product AI reports.
-- [ ] Set initial upload limits, source query timeouts, check schedule minimums, and retention defaults.
+- [x] Set initial upload limits, source query timeouts, check schedule minimums, and retention defaults. (D-08)
 - [x] Record unresolved choices in a decision log rather than silently guessing.
 
 **Phase gate:** scope and policy decisions are written down; unresolved deployment decisions are labeled as open.
@@ -119,7 +119,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Add source and dataset list/detail API routes with workspace authorization. (D-37)
 - [ ] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); **the add-source flow is waiting** on the PostgreSQL connector (Phase G) for "validate" and on D-08 for uploads and schedules.
 - [x] Add private object storage configuration and random object keys. (D-38)
-- [ ] Add upload initiation and completion endpoints.
+- [x] Add upload initiation and completion endpoints. (D-41)
 - [ ] Enforce file-size, row-size, encoding, and content validation limits. (D-08: 50 MB, UTF-8, 1,000 columns, 1 MB rows)
 - [ ] Add streaming CSV parsing in the worker; reject malformed/oversized input safely.
 - [ ] Save an initial CSV profile and schema snapshot.

@@ -8,6 +8,8 @@ import { hashPassword } from '../src/auth/password.js';
 import { MemoryRateLimiter, RATE_LIMITER } from '../src/auth/rate-limit.js';
 import { DEPENDENCY_CHECKS } from '../src/health/dependency-checks.js';
 import { configureHttp } from '../src/http.js';
+import { UPLOAD_STORAGE, type StoredObject, type UploadStorage } from '../src/storage/storage.js';
+import { UPLOAD_QUEUE, type UploadQueue } from '../src/uploads/upload-queue.js';
 
 export const WEB = 'http://localhost:5173';
 export const PASSWORD = 'correct horse battery staple';
@@ -27,8 +29,36 @@ export async function databaseSkipReason(): Promise<string | false> {
   }
 }
 
-/** Starts the real API module against the local database. */
-export async function startApi(): Promise<{ app: INestApplication; url: string }> {
+/** In-memory storage: tests put "uploaded" objects in `objects`. */
+export class FakeUploadStorage implements UploadStorage {
+  readonly objects = new Map<string, StoredObject>();
+  signUpload(key: string) {
+    return Promise.resolve({
+      method: 'PUT' as const,
+      url: `http://storage.test/${key}?signature=fake`,
+      headers: { 'content-type': 'text/csv' },
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+  }
+  stat(key: string) {
+    return Promise.resolve(this.objects.get(key) ?? null);
+  }
+}
+
+/** Records queued jobs instead of sending them to Redis. */
+export class RecordingUploadQueue implements UploadQueue {
+  readonly jobs: { workspaceId: string; uploadId: string }[] = [];
+  enqueueParse(data: { workspaceId: string; uploadId: string }) {
+    this.jobs.push(data);
+    return Promise.resolve();
+  }
+}
+
+/** Starts the real API module against the local database. Storage and the
+ * queue are fakes unless a test passes its own. */
+export async function startApi(
+  fakes: { storage?: UploadStorage; queue?: UploadQueue } = {},
+): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
     imports: [
       AppModule.register({
@@ -44,6 +74,10 @@ export async function startApi(): Promise<{ app: INestApplication; url: string }
     .useValue([])
     .overrideProvider(RATE_LIMITER)
     .useValue(new MemoryRateLimiter())
+    .overrideProvider(UPLOAD_STORAGE)
+    .useValue(fakes.storage ?? new FakeUploadStorage())
+    .overrideProvider(UPLOAD_QUEUE)
+    .useValue(fakes.queue ?? new RecordingUploadQueue())
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });
   configureHttp(app, WEB);

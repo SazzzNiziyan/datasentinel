@@ -121,6 +121,7 @@ model Membership {
   ownedSources    DataSource[]
   ownedDatasets   Dataset[]
   invitationsSent Invitation[]
+  uploadsCreated  Upload[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -201,6 +202,7 @@ model DataSource {
   owner       Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
   credentials SourceCredential[]
   datasets    Dataset[]
+  uploads     Upload[]
 
   @@unique([workspaceId, name])
   /// Target of composite foreign keys that keep children in the same workspace.
@@ -245,10 +247,13 @@ model Dataset {
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  source DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
-  owner  Membership? @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  source  DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  owner   Membership? @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  uploads Upload[]
 
   @@unique([workspaceId, sourceId, stableKey])
+  /// Target of composite foreign keys that keep uploads in the same source.
+  @@unique([workspaceId, sourceId, id])
   @@index([workspaceId, status])
   @@map("datasets")
 }
@@ -273,4 +278,51 @@ model Invitation {
 
   @@index([workspaceId, email])
   @@map("invitations")
+}
+
+enum UploadStatus {
+  awaiting_upload
+  queued
+  parsing
+  succeeded
+  failed
+}
+
+/// One CSV file sent to private storage (D-41). The browser uploads straight
+/// to a short-lived signed URL; the worker parses it after completion.
+model Upload {
+  id                    String       @id @default(uuid(7)) @db.Uuid
+  workspaceId           String       @map("workspace_id") @db.Uuid
+  sourceId              String       @map("source_id") @db.Uuid
+  /// The dataset it feeds (D-10). Null until completion when the user asked
+  /// for a new dataset, whose name waits in new_dataset_name.
+  datasetId             String?      @map("dataset_id") @db.Uuid
+  newDatasetName        String?      @map("new_dataset_name")
+  /// Random, never derived from user input (D-38).
+  objectKey             String       @unique @map("object_key")
+  /// Display only, cleaned of paths and control characters; never trusted.
+  filename              String
+  sizeBytes             Int          @map("size_bytes")
+  /// Lowercase hex SHA-256 the browser declared; storage and the worker check it.
+  checksumSha256        String       @map("checksum_sha256")
+  status                UploadStatus @default(awaiting_upload)
+  /// Safe failure (ConnectorFailure JSON), never a raw error.
+  error                 Json?
+  createdByMembershipId String       @map("created_by_membership_id") @db.Uuid
+  uploadUrlExpiresAt    DateTime     @map("upload_url_expires_at") @db.Timestamptz(3)
+  completedAt           DateTime?    @map("completed_at") @db.Timestamptz(3)
+  /// Raw file deletion date (D-08: 30 days).
+  retainUntil           DateTime     @map("retain_until") @db.Timestamptz(3)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  source    DataSource @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  /// Cascade: datasets and memberships are archived or removed by status, so
+  /// rows are deleted only with their workspace, in any order.
+  dataset   Dataset?   @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy Membership @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([workspaceId, sourceId, createdAt])
+  @@index([retainUntil])
+  @@map("uploads")
 }

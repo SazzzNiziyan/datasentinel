@@ -23,6 +23,9 @@ import { WorkspacesController } from './workspaces/workspaces.controller.js';
 import { APP_OPTIONS, type AppOptions } from './options.js';
 import { ProblemFilter } from './problem.js';
 import { SourcesController } from './sources/sources.controller.js';
+import { S3UploadStorage, UPLOAD_STORAGE } from './storage/storage.js';
+import { BullUploadQueue, UPLOAD_QUEUE } from './uploads/upload-queue.js';
+import { UploadsController } from './uploads/uploads.controller.js';
 
 @Module({})
 export class AppModule {
@@ -39,6 +42,7 @@ export class AppModule {
         WorkspacesController,
         MembersController,
         SourcesController,
+        UploadsController,
         InvitationsController,
         AcceptInvitationController,
       ],
@@ -55,6 +59,10 @@ export class AppModule {
         { provide: APP_GUARD, useClass: OriginGuard },
         { provide: APP_GUARD, useClass: SessionGuard },
         { provide: APP_GUARD, useClass: WorkspaceGuard },
+        // Like the dependency checks, these read the environment only when
+        // built, so tests replace them without a full .env.
+        { provide: UPLOAD_STORAGE, useFactory: () => new S3UploadStorage(loadApiEnv) },
+        { provide: UPLOAD_QUEUE, useFactory: () => new BullUploadQueue(options.redisUrl) },
         {
           provide: DEPENDENCY_CHECKS,
           // Reads the environment only when the real checks are built, so

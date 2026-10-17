@@ -1,8 +1,8 @@
 import { DeleteObjectCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { describe, it } from 'node:test';
-import { createStorageClient, uploadObjectKey } from '../src/storage/storage.js';
+import { createHash, randomUUID } from 'node:crypto';
+import { after, describe, it } from 'node:test';
+import { createStorageClient, S3UploadStorage, uploadObjectKey } from '../src/storage/storage.js';
 
 describe('upload object keys', () => {
   it('are random and stay under the workspace prefix', () => {
@@ -60,5 +60,58 @@ describe('uploads bucket', { skip: await storageSkipReason() }, () => {
     } finally {
       await client.send(new DeleteObjectCommand({ Bucket: settings.S3_BUCKET_UPLOADS, Key }));
     }
+  });
+
+  describe('signed upload URLs', () => {
+    const storage = new S3UploadStorage(() => settings);
+    const body = 'id,name\n1,Ada\n2,Grace\n';
+    const sha256 = createHash('sha256').update(body).digest('hex');
+    const keys: string[] = [];
+    const newKey = () => {
+      const key = uploadObjectKey(randomUUID());
+      keys.push(key);
+      return key;
+    };
+    const send = async (key: string, content: string, size = Buffer.byteLength(content)) => {
+      const signed = await storage.signUpload(key, size, sha256);
+      return fetch(signed.url, { method: signed.method, headers: signed.headers, body: content });
+    };
+
+    after(async () => {
+      const client = createStorageClient(settings);
+      for (const Key of keys) {
+        await client.send(new DeleteObjectCommand({ Bucket: settings.S3_BUCKET_UPLOADS, Key }));
+      }
+    });
+
+    it('accept the declared file, and stat reports its size and checksum', async () => {
+      const key = newKey();
+      const put = await send(key, body);
+      assert.equal(put.status, 200, await put.text());
+      assert.deepEqual(await storage.stat(key), { sizeBytes: Buffer.byteLength(body), sha256 });
+    });
+
+    it('refuse different content of the same size', async () => {
+      const key = newKey();
+      const put = await send(key, body.replace('Ada', 'Bob'));
+      assert.ok(put.status >= 400, `tampered PUT gave ${put.status}`);
+      assert.equal(await storage.stat(key), null);
+    });
+
+    it('refuse a bigger file than declared', async () => {
+      const key = newKey();
+      const signed = await storage.signUpload(key, Buffer.byteLength(body), sha256);
+      const put = await fetch(signed.url, {
+        method: 'PUT',
+        headers: signed.headers,
+        body: body + '3,Linus\n',
+      }).catch(() => null);
+      assert.ok(put === null || put.status >= 400, `bigger PUT gave ${put?.status}`);
+      assert.equal(await storage.stat(key), null);
+    });
+
+    it('stat gives null for a missing object', async () => {
+      assert.equal(await storage.stat(uploadObjectKey(randomUUID())), null);
+    });
   });
 });
