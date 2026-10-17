@@ -21,6 +21,7 @@ import { Redis } from 'ioredis';
 import { handleDiscoverTables } from '../jobs/discover-tables.js';
 import { handleProfileDataset } from '../jobs/profile-dataset.js';
 import { handleRunCheck } from '../jobs/run-check.js';
+import { queueScheduledChecks } from '../scheduler/dispatch.js';
 import { handleTestConnection, type TestConnectionDeps } from '../jobs/test-connection.js';
 import { WORKER_OPTIONS, type WorkerOptions } from './system-queue.service.js';
 
@@ -66,10 +67,25 @@ export class SourceQueueService implements OnApplicationBootstrap, OnApplication
         });
       }
       case PROFILE_DATASET_JOB: {
+        const data = job.data as ProfileDatasetJobData;
         const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
-        return handleProfileDataset(this.deps, job.data as ProfileDatasetJobData, {
-          finalAttempt,
-        });
+        // A scheduled profile is followed by the dataset's checks, also
+        // when the profile failed for good (D-71).
+        const followUp = () =>
+          data.occurrenceId === undefined || this.deps.enqueue === undefined
+            ? Promise.resolve(0)
+            : queueScheduledChecks(
+                { prisma: this.deps.prisma, enqueue: this.deps.enqueue },
+                data.occurrenceId,
+              );
+        try {
+          await handleProfileDataset(this.deps, data, { finalAttempt });
+        } catch (error) {
+          if (finalAttempt) await followUp();
+          throw error;
+        }
+        await followUp();
+        return;
       }
       case RUN_CHECK_JOB: {
         const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);

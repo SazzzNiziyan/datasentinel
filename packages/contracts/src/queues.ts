@@ -55,6 +55,9 @@ export const PROFILE_DATASET_JOB = 'profile-dataset';
 export interface ProfileDatasetJobData {
   workspaceId: string;
   datasetId: string;
+  /** Set by the scheduler: the dataset's rules are queued after the
+   * profile finishes (D-71). */
+  occurrenceId?: string;
 }
 
 /** Runs one queued check (D-59). Job ID `check-<checkRunId>`; the run row

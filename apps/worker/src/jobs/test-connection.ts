@@ -8,6 +8,7 @@ import {
 import type { PrismaClient } from '@datasentinel/db';
 import { unlimitedSlots, type SourceSlots } from '../queue/source-slots.js';
 import { loadPostgresAccess } from './postgres-access.js';
+import type { Enqueue } from '../scheduler/dispatch.js';
 import type { ObjectOpener } from './parse-upload.js';
 
 export interface TestConnectionDeps {
@@ -20,6 +21,8 @@ export interface TestConnectionDeps {
   slots?: SourceSlots;
   /** Reads uploaded files, for checks that scan a CSV again (D-61). */
   open?: ObjectOpener;
+  /** Queues follow-up jobs, e.g. a scheduled dataset's checks (D-71). */
+  enqueue?: Enqueue;
 }
 
 /** Runs one connection test (D-49). Connector failures are the answer and

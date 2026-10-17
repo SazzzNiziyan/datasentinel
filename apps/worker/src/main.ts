@@ -8,7 +8,7 @@ async function bootstrap() {
   // Fail fast with a safe message (names only, never values).
   const env = loadWorkerEnv();
   const app = await NestFactory.createApplicationContext(
-    WorkerModule.register({ logLevel: env.LOG_LEVEL, redisUrl: env.REDIS_URL }),
+    WorkerModule.register({ logLevel: env.LOG_LEVEL, redisUrl: env.REDIS_URL, scheduler: true }),
     { bufferLogs: true },
   );
   app.useLogger(app.get(Logger));

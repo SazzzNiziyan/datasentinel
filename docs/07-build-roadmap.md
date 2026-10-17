@@ -9,7 +9,7 @@ Keep this section current after every item so another agent can continue.
 - **Last updated:** 2026-10-17. **Done:** 64 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is complete except the PostgreSQL branch of the add-source flow (waits for Phase G).
 - **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
 - **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
-- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phase G is complete; next is Phase H). Decisions D-01 to D-68 are in `docs/09-decision-log.md`.
+- **Next item:** the first unchecked, unblocked box below (Phase F is done except the PostgreSQL branch of the add-source flow, which waits for Phase G; Phases G and H are complete; Phase I is in progress). Decisions D-01 to D-69 are in `docs/09-decision-log.md`.
 - **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
 - **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
@@ -166,7 +166,7 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 
 ## 10. Phase I — Scheduling and pipeline-run history
 
-- [ ] Define schedule schema, timezone behavior, and allowed minimum interval.
+- [x] Define schedule schema, timezone behavior, and allowed minimum interval. (D-69)
 - [ ] Add the scheduler process and unique schedule-occurrence key.
 - [ ] Enqueue due profile/check jobs and record the resulting run ID.
 - [ ] Add pause/resume/update schedule endpoints and UI.

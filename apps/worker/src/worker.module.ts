@@ -14,15 +14,42 @@ import { keyRing } from '@datasentinel/connectors';
 import { Redis } from 'ioredis';
 import { RedisSourceSlots } from './queue/source-slots.js';
 import { s3ObjectOpener } from './storage/object-opener.js';
+import { SOURCE_QUEUE } from '@datasentinel/contracts';
+import { Queue } from 'bullmq';
+import { dispatchOccurrence, type Enqueue } from './scheduler/dispatch.js';
+import {
+  SCHEDULER_DEPS,
+  SchedulerService,
+  type SchedulerDeps,
+} from './scheduler/scheduler.service.js';
 
 export interface WorkerModuleOptions extends WorkerOptions {
   logLevel: Level | 'silent';
+  /** Runs the schedule ticker (D-70); off in tests. */
+  scheduler?: boolean;
+}
+
+/** A sources-queue producer that connects on first use (D-71). */
+function sourcesProducer(redisUrl: string): Enqueue {
+  let queue: Queue | undefined;
+  return async (name, data, jobId) => {
+    queue ??= new Queue(SOURCE_QUEUE, {
+      connection: new Redis(redisUrl, { maxRetriesPerRequest: 1 }),
+    });
+    await queue.add(name, data, {
+      jobId,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: true,
+      removeOnFail: true,
+    });
+  };
 }
 
 /** Background jobs only; no HTTP server. */
 @Module({})
 export class WorkerModule {
-  static register({ logLevel, ...options }: WorkerModuleOptions): DynamicModule {
+  static register({ logLevel, scheduler = false, ...options }: WorkerModuleOptions): DynamicModule {
     return {
       module: WorkerModule,
       imports: [LoggerModule.forRoot({ pinoHttp: { level: logLevel } })],
@@ -56,11 +83,28 @@ export class WorkerModule {
               }),
               policy: env.SOURCE_NETWORK_POLICY,
               open: s3ObjectOpener(env),
+              enqueue: sourcesProducer(env.REDIS_URL),
               slots: new RedisSourceSlots(new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 })),
             };
           },
         },
         SourceQueueService,
+        ...(scheduler
+          ? [
+              {
+                provide: SCHEDULER_DEPS,
+                useFactory: (): SchedulerDeps => {
+                  const env = loadWorkerEnv();
+                  const deps = {
+                    prisma: createPrismaClient(env.DATABASE_URL),
+                    enqueue: sourcesProducer(env.REDIS_URL),
+                  };
+                  return { prisma: deps.prisma, dispatch: (o) => dispatchOccurrence(deps, o) };
+                },
+              },
+              SchedulerService,
+            ]
+          : []),
       ],
     };
   }

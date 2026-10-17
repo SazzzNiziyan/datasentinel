@@ -118,13 +118,14 @@ model Membership {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ownedSources    DataSource[]
-  ownedDatasets   Dataset[]
-  invitationsSent Invitation[]
-  uploadsCreated  Upload[]
-  connectionTests ConnectionTest[]
-  rulesCreated    QualityRule[]
-  ruleRevisions   RuleRevision[]
+  ownedSources     DataSource[]
+  ownedDatasets    Dataset[]
+  invitationsSent  Invitation[]
+  uploadsCreated   Upload[]
+  connectionTests  ConnectionTest[]
+  rulesCreated     QualityRule[]
+  schedulesCreated Schedule[]
+  ruleRevisions    RuleRevision[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -257,6 +258,7 @@ model Dataset {
   profileSnapshots ProfileSnapshot[]
   schemaSnapshots  SchemaSnapshot[]
   rules            QualityRule[]
+  schedules        Schedule[]
 
   @@unique([workspaceId, sourceId, stableKey])
   /// Target of composite foreign keys that keep uploads in the same source.
@@ -457,6 +459,7 @@ model QualityRule {
   createdBy Membership?    @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
   revisions RuleRevision[]
   checkRuns CheckRun[]
+  schedules Schedule[]
 
   @@unique([workspaceId, id])
   @@index([workspaceId, datasetId])
@@ -517,15 +520,90 @@ model CheckRun {
   /// Safe failure (ConnectorFailure JSON) when status is error.
   error          Json?
   idempotencyKey String         @map("idempotency_key")
+  /// The schedule occurrence that started it; null for manual runs (D-71).
+  occurrenceId   String?        @map("occurrence_id") @db.Uuid
   startedAt      DateTime?      @map("started_at") @db.Timestamptz(3)
   endedAt        DateTime?      @map("ended_at") @db.Timestamptz(3)
   durationMs     Int?           @map("duration_ms")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  rule     QualityRule  @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
-  revision RuleRevision @relation(fields: [workspaceId, ruleRevisionId], references: [workspaceId, id], onDelete: Cascade)
+  rule       QualityRule         @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  revision   RuleRevision        @relation(fields: [workspaceId, ruleRevisionId], references: [workspaceId, id], onDelete: Cascade)
+  occurrence ScheduleOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
 
   @@unique([workspaceId, idempotencyKey])
   @@index([workspaceId, ruleId, createdAt])
+  @@index([occurrenceId])
   @@map("check_runs")
+}
+
+enum ScheduleTarget {
+  /// Profile the dataset (databases), then run its enabled rules.
+  dataset
+  /// Run one rule.
+  rule
+}
+
+/// When checks run on their own (D-69). The definition is validated JSON
+/// (packages/contracts schedules.ts): an interval of 15 minutes to a week,
+/// or set times of day in an IANA time zone. An occurrence still running
+/// when the next one is due makes the next one skip.
+model Schedule {
+  id                    String         @id @default(uuid(7)) @db.Uuid
+  workspaceId           String         @map("workspace_id") @db.Uuid
+  sourceId              String         @map("source_id") @db.Uuid
+  datasetId             String         @map("dataset_id") @db.Uuid
+  /// Set exactly when the target is one rule (check constraint).
+  ruleId                String?        @map("rule_id") @db.Uuid
+  targetType            ScheduleTarget @map("target_type")
+  definition            Json
+  enabled               Boolean        @default(true)
+  /// Intervals step from here, so they do not drift.
+  anchorAt              DateTime       @map("anchor_at") @db.Timestamptz(3)
+  /// Null while paused.
+  nextRunAt             DateTime?      @map("next_run_at") @db.Timestamptz(3)
+  lastRunAt             DateTime?      @map("last_run_at") @db.Timestamptz(3)
+  createdByMembershipId String?        @map("created_by_membership_id") @db.Uuid
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  dataset   Dataset      @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: Cascade)
+  rule      QualityRule? @relation(fields: [workspaceId, ruleId], references: [workspaceId, id], onDelete: Cascade)
+  createdBy Membership?  @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  occurrences ScheduleOccurrence[]
+
+  @@index([enabled, nextRunAt])
+  @@index([workspaceId, datasetId])
+  @@map("schedules")
+}
+
+enum OccurrenceStatus {
+  /// Claimed by the scheduler; jobs not queued yet.
+  pending
+  /// Its jobs are queued.
+  enqueued
+  /// Not run, e.g. the previous occurrence was still running.
+  skipped
+}
+
+/// One due time of a schedule (D-70). Unique per schedule and time: two
+/// scheduler ticks, or two workers, cannot both claim it.
+model ScheduleOccurrence {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  workspaceId  String           @map("workspace_id") @db.Uuid
+  scheduleId   String           @map("schedule_id") @db.Uuid
+  scheduledFor DateTime         @map("scheduled_for") @db.Timestamptz(3)
+  status       OccurrenceStatus @default(pending)
+  /// Due times passed over while the scheduler was not running.
+  missedBefore Int              @default(0) @map("missed_before")
+  skipReason   String?          @map("skip_reason")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  schedule  Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  checkRuns CheckRun[]
+
+  @@unique([scheduleId, scheduledFor])
+  @@index([workspaceId, createdAt])
+  @@map("schedule_occurrences")
 }
