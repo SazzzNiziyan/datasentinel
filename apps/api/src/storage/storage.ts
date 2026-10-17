@@ -1,4 +1,10 @@
-import { HeadObjectCommand, NotFound, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  NotFound,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { UploadInstructions } from '@datasentinel/contracts';
 import type { ServerEnv } from '@datasentinel/config';
@@ -49,6 +55,8 @@ export interface UploadStorage {
   signUpload(key: string, sizeBytes: number, sha256: string): Promise<UploadInstructions>;
   /** Null when nothing is stored under the key. */
   stat(key: string): Promise<StoredObject | null>;
+  /** Deletes one object; deleting a missing key is not an error. */
+  remove(key: string): Promise<void>;
 }
 
 export const UPLOAD_STORAGE = Symbol('UPLOAD_STORAGE');
@@ -97,6 +105,11 @@ export class S3UploadStorage implements UploadStorage {
       headers: { 'content-type': 'text/csv', 'x-amz-checksum-sha256': checksum },
       expiresAt: new Date(Date.now() + UPLOAD_URL_SECONDS * 1000).toISOString(),
     };
+  }
+
+  async remove(key: string): Promise<void> {
+    const { client, bucket } = this.target;
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
   async stat(key: string): Promise<StoredObject | null> {

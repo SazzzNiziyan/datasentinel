@@ -8,7 +8,7 @@
 
 - No email provider is bundled; email deliveries fail visibly until one is configured.
 - No AI provider is bundled; AI stays unavailable until the deployer configures one.
-- No automatic data purging and no one-step workspace deletion (runbook section 6).
+- Only raw uploads are purged automatically (30 days); other history is kept until the workspace is deleted, which the owner can do (runbook section 6).
 - The restore rehearsal, TLS and DNS, secret manager, and staging walkthrough are operator tasks not yet performed.
 
 **Upgrade:** follow runbook section 2. Every release that changes the schema must say so here, and the pipeline must run `prisma migrate status` against a fresh database before deploy.

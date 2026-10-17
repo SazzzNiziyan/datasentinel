@@ -1,6 +1,7 @@
-import { GetObjectCommand, NoSuchKey, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, NoSuchKey, S3Client } from '@aws-sdk/client-s3';
 import type { ServerEnv } from '@datasentinel/config';
 import type { ObjectOpener } from '../jobs/parse-upload.js';
+import type { RemoveObject } from '../retention/sweep-uploads.js';
 
 type StorageSettings = Pick<
   ServerEnv,
@@ -38,5 +39,22 @@ export function s3ObjectOpener(settings: StorageSettings): ObjectOpener {
       }
       throw error;
     }
+  };
+}
+
+/** Deletes expired raw uploads (retention). The worker's credentials must
+ * allow DeleteObject on the uploads bucket. */
+export function s3ObjectRemover(settings: StorageSettings): RemoveObject {
+  const client = new S3Client({
+    endpoint: settings.S3_ENDPOINT,
+    region: settings.S3_REGION,
+    forcePathStyle: settings.S3_FORCE_PATH_STYLE,
+    credentials: {
+      accessKeyId: settings.S3_ACCESS_KEY_ID,
+      secretAccessKey: settings.S3_SECRET_ACCESS_KEY,
+    },
+  });
+  return async (key) => {
+    await client.send(new DeleteObjectCommand({ Bucket: settings.S3_BUCKET_UPLOADS, Key: key }));
   };
 }

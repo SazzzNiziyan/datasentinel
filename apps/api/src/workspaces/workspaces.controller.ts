@@ -5,12 +5,24 @@ import {
   type WorkspaceSummary,
 } from '@datasentinel/contracts';
 import { Prisma, type PrismaClient } from '@datasentinel/db';
-import { Body, Controller, Get, HttpStatus, Inject, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Logger,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { CurrentRequest, recordAudit, type RequestMeta } from '../audit/audit.js';
 import { CurrentPrincipal, type Principal } from '../auth/session.guard.js';
 import { PRISMA } from '../db.js';
 import { ProblemException } from '../problem.js';
+import { UPLOAD_STORAGE, type UploadStorage } from '../storage/storage.js';
 import { CurrentWorkspace, RequireRole, type WorkspaceAccess } from './workspace.guard.js';
 
 /** "Acme Analytics!" -> "acme-analytics". Falls back to "workspace". */
@@ -40,7 +52,12 @@ const isSlugTaken = (error: unknown) =>
 
 @Controller('workspaces')
 export class WorkspacesController {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  private readonly logger = new Logger(WorkspacesController.name);
+
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Inject(UPLOAD_STORAGE) private readonly storage: UploadStorage,
+  ) {}
 
   /** Creates the workspace and the caller's owner membership together:
    * a workspace never exists without an owner. */
@@ -166,5 +183,60 @@ export class WorkspacesController {
       role: access.role,
       createdAt: w.createdAt.toISOString(),
     };
+  }
+
+  /** Deletes the workspace and everything in it (owner only). The caller
+   * types the workspace slug to confirm. Rows go in one transaction (their
+   * data cascades by foreign key); the audit record names no data. Stored
+   * files are removed after the commit; any that could not be removed are
+   * counted in the response so an operator can clean them up. */
+  @Delete(':workspaceId')
+  @HttpCode(HttpStatus.OK)
+  @RequireRole('owner')
+  async remove(
+    @CurrentWorkspace() access: WorkspaceAccess,
+    @CurrentPrincipal() principal: Principal,
+    @CurrentRequest() request: RequestMeta,
+    @Body() body: unknown,
+  ): Promise<{ deleted: true; objectsNotRemoved: number }> {
+    const w = await this.prisma.workspace.findUniqueOrThrow({ where: { id: access.workspaceId } });
+    const confirm = (body as { confirmSlug?: unknown } | null)?.confirmSlug;
+    if (confirm !== w.slug) {
+      throw new ProblemException(
+        HttpStatus.BAD_REQUEST,
+        'confirmation_required',
+        'Type the workspace slug to confirm deletion.',
+        'Send confirmSlug with the exact slug of this workspace.',
+      );
+    }
+    const keys = (
+      await this.prisma.upload.findMany({
+        where: { workspaceId: w.id },
+        select: { objectKey: true },
+      })
+    ).map((u) => u.objectKey);
+    await this.prisma.$transaction(async (tx) => {
+      await recordAudit(tx, {
+        action: 'workspace.deleted',
+        actor: { type: 'user', id: principal.userId },
+        request,
+        workspaceId: w.id,
+        target: { type: 'workspace', id: w.id },
+        summary: { objects: keys.length },
+      });
+      await tx.workspace.delete({ where: { id: w.id } });
+    });
+    let notRemoved = 0;
+    for (const key of keys) {
+      try {
+        await this.storage.remove(key);
+      } catch {
+        notRemoved += 1;
+      }
+    }
+    if (notRemoved > 0) {
+      this.logger.error(`workspace ${w.id} deleted; ${notRemoved} stored files not removed`);
+    }
+    return { deleted: true, objectsNotRemoved: notRemoved };
   }
 }

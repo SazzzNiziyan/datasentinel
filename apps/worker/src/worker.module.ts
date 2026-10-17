@@ -13,7 +13,12 @@ import { SourceQueueService, TEST_CONNECTION_DEPS } from './queue/source-queue.s
 import { keyRing } from '@datasentinel/connectors';
 import { Redis } from 'ioredis';
 import { RedisSourceSlots } from './queue/source-slots.js';
-import { s3ObjectOpener } from './storage/object-opener.js';
+import { s3ObjectOpener, s3ObjectRemover } from './storage/object-opener.js';
+import {
+  RETENTION_DEPS,
+  RetentionService,
+  type RetentionServiceDeps,
+} from './retention/retention.service.js';
 import { jobOptions, PARSE_UPLOAD_JOB, SOURCE_QUEUE, UPLOAD_QUEUE } from '@datasentinel/contracts';
 import { Queue } from 'bullmq';
 import { ACTION_DEPS, ActionService, type ActionServiceDeps } from './actions/actions.service.js';
@@ -192,6 +197,17 @@ export class WorkerModule {
                 },
               },
               ActionService,
+              {
+                provide: RETENTION_DEPS,
+                useFactory: (): RetentionServiceDeps => {
+                  const env = loadWorkerEnv();
+                  return {
+                    prisma: createPrismaClient(env.DATABASE_URL),
+                    remove: s3ObjectRemover(env),
+                  };
+                },
+              },
+              RetentionService,
             ]
           : []),
       ],

@@ -52,6 +52,10 @@ export class FakeUploadStorage implements UploadStorage {
   stat(key: string) {
     return Promise.resolve(this.objects.get(key) ?? null);
   }
+  remove(key: string) {
+    this.objects.delete(key);
+    return Promise.resolve();
+  }
 }
 
 /** Records queued jobs instead of sending them to Redis. */

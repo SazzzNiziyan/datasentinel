@@ -54,9 +54,13 @@ Migrations are forward-only. To go back, stop API and worker, restore the pre-up
 
 ## 6. Retention and deletion
 
-Built: archiving sources, destinations and documents (destination secrets are wiped on archive); append-only audit events.
+Built:
 
-**Not built:** automatic purging of old rows and a one-step "delete workspace". Until they exist, deletion is a manual operator procedure: delete the workspace row (its data cascades by foreign key), delete its object-storage prefix, and record who did it and when. Deleted data stays in backups until they age out; set backup retention to match what you promise customers.
+- **Raw uploads (30 days):** the worker removes each raw CSV from storage after its retention date (checked every 15 minutes) and marks it. Parsed results (profiles, schema snapshots) stay. The worker's storage credentials must allow DeleteObject on the uploads bucket. A failed removal is retried on the next pass.
+- **Workspace deletion:** `DELETE /workspaces/:id` (owner only) with body `{"confirmSlug": "<the workspace slug>"}`. All workspace data is removed in one transaction (it cascades by foreign key), then the stored files are removed. The response reports `objectsNotRemoved`; if it is not 0, delete the leftover objects by hand (the log names the workspace id). User accounts are not workspace data and remain. An audit record `workspace.deleted` (workspace id, actor, file count only) is kept.
+- Archiving sources, destinations and documents (destination secrets are wiped on archive); append-only audit events.
+
+**Not built:** automatic purging of other old rows (check runs, delivery history, audit events); they are kept until the workspace is deleted. Deleted data stays in backups until they age out; set backup retention to match what you promise customers.
 
 ## 7. Incident response
 
