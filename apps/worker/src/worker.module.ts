@@ -31,6 +31,8 @@ import {
 import { postJson } from './delivery/deliver-slack.js';
 import { postSigned } from './delivery/deliver-webhook.js';
 import { unconfiguredEmail } from './delivery/deliver-email.js';
+import { smtpTransport } from './delivery/smtp-transport.js';
+import { geminiProvider } from './ai/gemini-provider.js';
 import { DELIVERY_DEPS, DeliveryService, type DeliveryDeps } from './delivery/delivery.service.js';
 import { dispatchOccurrence, type Enqueue } from './scheduler/dispatch.js';
 import {
@@ -135,7 +137,10 @@ export class WorkerModule {
                   const env = loadWorkerEnv();
                   return {
                     prisma: createPrismaClient(env.DATABASE_URL),
-                    email: unconfiguredEmail,
+                    email:
+                      env.SMTP_URL !== undefined && env.EMAIL_FROM !== undefined
+                        ? smtpTransport(env.SMTP_URL, env.EMAIL_FROM)
+                        : unconfiguredEmail,
                     ring: keyRing({
                       key: env.SECRETS_ENCRYPTION_KEY,
                       version: env.SECRETS_ENCRYPTION_KEY_VERSION,
@@ -160,9 +165,13 @@ export class WorkerModule {
                   const prisma = createPrismaClient(env.DATABASE_URL);
                   return {
                     prisma,
-                    // No provider is bundled (D-101): reports fail visibly until one is wired in.
+                    // Gemini is the one bundled provider (D-130); without a key,
+                    // reports fail visibly (D-101).
                     llm: {
-                      provider: unconfiguredLlm,
+                      provider:
+                        env.AI_API_KEY === undefined
+                          ? unconfiguredLlm
+                          : geminiProvider(env.AI_API_KEY, env.AI_MODEL ?? 'gemini-2.5-flash'),
                       ledger: prismaUsageLedger(prisma),
                       limits: {
                         ...DEFAULT_LLM_LIMITS,

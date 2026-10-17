@@ -19,7 +19,7 @@ async function bootstrap() {
   });
   const app = await NestFactory.create(module, { bufferLogs: true });
   app.useLogger(app.get(Logger));
-  configureHttp(app, env.WEB_ORIGIN);
+  configureHttp(app, env.WEB_ORIGIN, { trustLocalProxy: env.TRUST_PROXY });
   app.enableShutdownHooks();
   await app.listen(env.API_PORT);
 }

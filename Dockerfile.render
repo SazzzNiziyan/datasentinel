@@ -1,0 +1,23 @@
+# All-in-one image for a single small host such as Render's free web service:
+# web app + API + worker + nginx in one container (deploy/supervisor.mjs).
+# Configuration comes only from environment variables at run time.
+FROM node:26-alpine AS build
+RUN npm install -g pnpm@12.14.0
+WORKDIR /repo
+COPY . .
+# Generating the Prisma client never connects; this placeholder is build-only.
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
+# The web app calls the API on its own origin, under /api.
+ENV VITE_API_BASE_URL=/api
+RUN pnpm install --frozen-lockfile \
+  && pnpm --filter ./apps/api... --filter ./apps/worker... --filter ./apps/web... build
+
+FROM node:26-alpine
+RUN apk add --no-cache nginx
+ENV NODE_ENV=production
+WORKDIR /repo
+COPY --from=build --chown=node:node /repo /repo
+RUN mkdir -p /usr/share/nginx/html && cp -r /repo/apps/web/dist/. /usr/share/nginx/html/
+USER node
+EXPOSE 10000
+CMD ["node", "deploy/supervisor.mjs"]

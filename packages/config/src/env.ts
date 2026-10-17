@@ -73,6 +73,13 @@ const previousKeys = z
     return keys;
   });
 
+const optionalSecret = z
+  .string()
+  .trim()
+  .max(1000)
+  .optional()
+  .transform((v) => (v === '' ? undefined : v));
+
 const optionalText = z
   .string()
   .trim()
@@ -116,6 +123,15 @@ const serverEnv = z.object({
   AI_RETENTION_NOTE: optionalText,
   /** Most tokens (input plus output) one workspace may use a day (UTC). */
   AI_DAILY_TOKEN_BUDGET: wholeNumber(1000, 100_000_000).default(200_000),
+  /** Google AI Studio key: turns on the bundled Gemini provider (the worker
+   * calls it). A secret; never logged. */
+  AI_API_KEY: optionalSecret,
+  AI_MODEL: optionalText,
+
+  /** Email sending through any SMTP server, as smtps://user:password@host:465
+   * or smtp://user:password@host:587. A secret; EMAIL_FROM is the sender. */
+  SMTP_URL: optionalSecret,
+  EMAIL_FROM: optionalText,
 });
 
 /** Previous keys must be older than the current one and not reuse it. Runs
@@ -158,6 +174,9 @@ const optional = z
 const apiEnv = serverEnv
   .extend({
     API_PORT: wholeNumber(1, 65_535).default(3000),
+    /** True when a reverse proxy on this machine (nginx) forwards requests, so
+     * the client address comes from X-Forwarded-For. */
+    TRUST_PROXY: z.stringbool().default(false),
     WEB_ORIGIN: origin,
     SESSION_SECRET: key,
     OAUTH_CALLBACK_BASE_URL: httpUrl,
