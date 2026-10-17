@@ -1,4 +1,4 @@
-import { sampleSession } from '../app/sampleSession.ts';
+import { roleLabel, useSignedIn } from '../app/session.ts';
 import { DataTable, type Column } from '../components/DataTable.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { PageFrame } from '../components/PageFrame.tsx';
@@ -12,6 +12,8 @@ const columns: Column<Member>[] = [
 ];
 
 export function SettingsPage() {
+  const { workspace } = useSignedIn();
+  const canManageMembers = workspace?.role === 'owner' || workspace?.role === 'admin';
   return (
     <PageFrame
       title="Workspace settings"
@@ -25,13 +27,15 @@ export function SettingsPage() {
         rowKey={(m) => m.id}
         empty={<EmptyState title="No members" description="Invite a teammate to start." />}
       />
-      {/* The sample user is a Data engineer; the server enforces this rule. */}
-      <PermissionDenied
-        title="You can't change member roles"
-        currentRole={sampleSession.role}
-        requiredRole="Administrator or Owner"
-        contact="Ask a workspace administrator or the owner to change roles or invite members."
-      />
+      {/* The server enforces this too (D-32); the screen only explains it. */}
+      {workspace !== undefined && !canManageMembers && (
+        <PermissionDenied
+          title="You can't change member roles"
+          currentRole={roleLabel[workspace.role]}
+          requiredRole="Administrator or Owner"
+          contact="Ask a workspace administrator or the owner to change roles or invite members."
+        />
+      )}
     </PageFrame>
   );
 }

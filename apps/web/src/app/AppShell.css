@@ -145,13 +145,6 @@
   text-overflow: ellipsis;
 }
 
-.sample-tag {
-  flex: none;
-  border: var(--border-width) solid var(--color-border-strong);
-  padding: 0 var(--space-2);
-  font-size: var(--text-helper);
-}
-
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -356,8 +349,7 @@
 }
 
 @media (max-width: 39.99rem) {
-  /* The sample tag stays: sample data must never look live (D-16).
-   * The workspace name truncates instead. */
+  /* Initials only; the workspace name truncates. */
   .account-button__text {
     display: none;
   }

@@ -1,6 +1,7 @@
 import { Controller, Get, HttpStatus, Inject, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { DependencyName, DependencyState, ReadinessReport } from '@datasentinel/contracts';
+import { Public } from '../auth/session.guard.js';
 import { CHECK_TIMEOUT_MS, DEPENDENCY_CHECKS, type DependencyCheck } from './dependency-checks.js';
 
 function withTimeout(work: Promise<void>, ms: number): Promise<void> {
@@ -12,6 +13,7 @@ function withTimeout(work: Promise<void>, ms: number): Promise<void> {
 
 /** Liveness and readiness (docs/08 §Operations). Responses name each
  * dependency and its state only: no URLs, errors, or topology. */
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(@Inject(DEPENDENCY_CHECKS) private readonly checks: readonly DependencyCheck[]) {}

@@ -61,6 +61,13 @@ export default defineConfig(
     languageOptions: { globals: globals.browser },
   },
 
+  // Tests are never hot-reloaded, so helpers may export components and
+  // functions together.
+  {
+    files: ['apps/web/test/**/*.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
+
   // Plain JS config files are not in any tsconfig: lint them without types.
   {
     files: ['**/*.{js,mjs,cjs}'],

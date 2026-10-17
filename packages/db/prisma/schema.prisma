@@ -98,6 +98,7 @@ model Workspace {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships Membership[]
+  sources     DataSource[]
 
   @@map("workspaces")
 }
@@ -116,7 +117,136 @@ model Membership {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  ownedSources  DataSource[]
+  ownedDatasets Dataset[]
+
   @@unique([workspaceId, userId])
+  /// Target of composite foreign keys that keep owners in the same workspace.
+  @@unique([workspaceId, id])
   @@index([userId])
   @@map("memberships")
+}
+
+enum ActorType {
+  user
+  anonymous
+  system
+}
+
+/// Append-only record of security and administration events (docs/03 §7,
+/// D-33). An UPDATE is refused by a trigger. No foreign keys: the trail
+/// outlives deleted users and workspaces; a retention job deletes old rows.
+model AuditEvent {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  /// Null for account-level events such as sign-in.
+  workspaceId String?   @map("workspace_id") @db.Uuid
+  actorType   ActorType @map("actor_type")
+  actorId     String?   @map("actor_id") @db.Uuid
+  /// Dotted name, e.g. "member.role_changed".
+  action      String
+  targetType  String?   @map("target_type")
+  targetId    String?   @map("target_id")
+  requestId   String?   @map("request_id")
+  /// Redacted before/after values; never passwords, tokens, or secrets.
+  summary     Json      @default("{}")
+  ip          String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([workspaceId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_events")
+}
+
+enum SourceType {
+  postgres
+  csv
+  http_api
+  pipeline_event
+}
+
+/// Lifecycle only; health comes from check results. Delete = archive (D-11).
+enum LifecycleStatus {
+  active
+  paused
+  archived
+}
+
+/// How sensitive a dataset's contents are; drives masking and AI use later.
+enum Sensitivity {
+  public
+  internal
+  confidential
+  restricted
+}
+
+/// A connection or upload location (docs/03 §3, D-36).
+model DataSource {
+  id                String          @id @default(uuid(7)) @db.Uuid
+  workspaceId       String          @map("workspace_id") @db.Uuid
+  name              String
+  type              SourceType
+  status            LifecycleStatus @default(active)
+  ownerMembershipId String?         @map("owner_membership_id") @db.Uuid
+  /// Non-secret settings (host, port, database name). Secrets live only in
+  /// source_credentials.
+  settings          Json            @default("{}")
+  lastCheckedAt     DateTime?       @map("last_checked_at") @db.Timestamptz(3)
+  archivedAt        DateTime?       @map("archived_at") @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner       Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  credentials SourceCredential[]
+  datasets    Dataset[]
+
+  @@unique([workspaceId, name])
+  /// Target of composite foreign keys that keep children in the same workspace.
+  @@unique([workspaceId, id])
+  @@map("data_sources")
+}
+
+/// Encrypted connection secret (docs/05). Never serialized to API or web.
+/// At most one active (not revoked) credential per source: partial unique
+/// index in the migration.
+model SourceCredential {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  workspaceId String    @map("workspace_id") @db.Uuid
+  sourceId    String    @map("source_id") @db.Uuid
+  /// AES-GCM ciphertext; the key is outside the database.
+  ciphertext  Bytes
+  keyVersion  Int       @map("key_version")
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  source DataSource @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@map("source_credentials")
+}
+
+/// A table, file series, or endpoint checked as one unit.
+model Dataset {
+  id                String          @id @default(uuid(7)) @db.Uuid
+  workspaceId       String          @map("workspace_id") @db.Uuid
+  sourceId          String          @map("source_id") @db.Uuid
+  /// Stable identity within the source, e.g. "public.orders".
+  stableKey         String          @map("stable_key")
+  name              String
+  description       String?
+  ownerMembershipId String?         @map("owner_membership_id") @db.Uuid
+  /// Where the data is, validated per source type; never arbitrary SQL.
+  locator           Json            @default("{}")
+  status            LifecycleStatus @default(active)
+  sensitivity       Sensitivity     @default(internal)
+  archivedAt        DateTime?       @map("archived_at") @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  source DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  owner  Membership? @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([workspaceId, sourceId, stableKey])
+  @@index([workspaceId, status])
+  @@map("datasets")
 }

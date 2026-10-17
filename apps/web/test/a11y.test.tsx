@@ -9,6 +9,7 @@ import { IncidentsPage } from '../src/pages/IncidentsPage.tsx';
 import { OverviewPage } from '../src/pages/OverviewPage.tsx';
 import { SettingsPage } from '../src/pages/SettingsPage.tsx';
 import { SourcesPage } from '../src/pages/SourcesPage.tsx';
+import { WithSession } from './session.tsx';
 
 /** Rule ID and offending elements, so a failure says what to fix. */
 async function violations(): Promise<string[]> {
@@ -32,13 +33,15 @@ describe.each<[string, ReactNode]>([
 ])('%s screen in the app shell', (_title, page) => {
   it('has no automatically detectable accessibility problems', async () => {
     render(
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={page} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <WithSession>
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/" element={page} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </WithSession>,
     );
     expect(await violations()).toEqual([]);
   });

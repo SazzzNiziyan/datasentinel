@@ -72,55 +72,6 @@ export const incidents: readonly Incident[] = [
   },
 ];
 
-export interface Source {
-  id: string;
-  name: string;
-  type: 'PostgreSQL' | 'CSV upload' | 'API check';
-  status: Status;
-  lastCheck: string;
-  owner: string;
-  schedule: string;
-}
-
-export const sources: readonly Source[] = [
-  {
-    id: 's1',
-    name: 'warehouse_prod',
-    type: 'PostgreSQL',
-    status: { tone: 'healthy', label: 'Connected' },
-    lastCheck: 'Today 08:40 UTC',
-    owner: 'Ana Kovac',
-    schedule: 'Every hour',
-  },
-  {
-    id: 's2',
-    name: 'billing_eu',
-    type: 'PostgreSQL',
-    status: { tone: 'warning', label: 'Slow responses' },
-    lastCheck: 'Today 08:15 UTC',
-    owner: 'Ravi Menon',
-    schedule: 'Every 6 hours',
-  },
-  {
-    id: 's3',
-    name: 'marketing_leads.csv',
-    type: 'CSV upload',
-    status: { tone: 'healthy', label: 'Uploaded' },
-    lastCheck: 'Yesterday 17:02 UTC',
-    owner: 'Lena Fischer',
-    schedule: 'On upload',
-  },
-  {
-    id: 's4',
-    name: 'legacy_orders_db',
-    type: 'PostgreSQL',
-    status: { tone: 'neutral', label: 'Paused' },
-    lastCheck: '3 Oct 11:20 UTC',
-    owner: 'Ravi Menon',
-    schedule: 'Paused',
-  },
-];
-
 export interface Dataset {
   id: string;
   name: string;

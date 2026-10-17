@@ -6,10 +6,12 @@ This roadmap builds the full product in dependency order. Each checkbox is inten
 
 Keep this section current after every item so another agent can continue.
 
-- **Last updated:** 2026-10-17. **Done:** 32 of 147 items. **Now:** Phase E (database and workspace access).
-- **Uncommitted work:** the user commits; check `git status` before starting. Everything since D-20 may be uncommitted.
-- **Next item:** the first unchecked box below. Decisions D-01 to D-21 are in `docs/09-decision-log.md`; D-04 to D-08 are still open, so stop and ask before work that needs them (hosting, production storage/secrets, email, LLM, limits/retention).
-- **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells); `pnpm check` is the gate; `pnpm services:up` needs Docker Desktop running.
+- **Last updated:** 2026-10-17. **Done:** 44 of 148 items. Phases A to D are complete; Phase E is complete except two blocked items; Phase F is partly done.
+- **Uncommitted work:** the user commits; check `git status` first. Everything since D-20 may be uncommitted.
+- **Blocked, needs the user:** Google/GitHub sign-in needs development OAuth app credentials in `.env`. D-04, D-05, D-07 are needed later (hosting, production storage/secrets, LLM). D-06 and D-08 were decided on 2026-10-17.
+- **Next item:** the first unchecked, unblocked box below (invitations in Phase E, then the rest of Phase F). Decisions D-01 to D-39 are in `docs/09-decision-log.md`.
+- **Run commands:** see `CLAUDE.local.md` if present (pnpm/fnm PATH line for tool shells). Gate: `pnpm check`. Services: `pnpm services:up` (Docker Desktop must run). Database: `pnpm --filter @datasentinel/db migrate:dev` (interactive) or the non-interactive steps in D-36; seed with `pnpm --filter @datasentinel/api build && pnpm --filter @datasentinel/api seed`.
+- **Integration tests** (database, Redis, storage) run when local services are up and are skipped otherwise.
 
 ## 1. Claude Code plugin setup
 
@@ -97,26 +99,28 @@ Verified 2026-10-17: a clean copy installs with `--frozen-lockfile` and passes `
 - [x] Create the initial Prisma schema for users, sessions, workspaces, and memberships. (D-26; `packages/db`)
 - [x] Create and apply the first migration locally. (D-26; `pnpm --filter @datasentinel/db migrate:dev`)
 - [x] Add a seed command that creates only fake development accounts/data. (D-27)
-- [ ] Implement sign-in and sign-out with secure session handling.
-- [ ] Implement `/auth/me` and the workspace list.
-- [ ] Implement workspace creation and initial owner membership in one transaction.
-- [ ] Add a workspace permission guard and use it on one read endpoint.
-- [ ] Add invitations and accept/revoke flows.
-- [ ] Add role changes and session revocation after member removal/downgrade.
-- [ ] Add audit events for sign-in security events, membership changes, and workspace settings.
-- [ ] Attempt cross-workspace access during manual verification and confirm it is denied.
+- [x] Implement sign-in and sign-out with secure session handling. (D-28; email/password)
+  - [ ] Add Google and GitHub sign-in with account linking (D-01, D-09). Needs development OAuth apps: set `GOOGLE_CLIENT_ID/SECRET` and `GITHUB_CLIENT_ID/SECRET` in `.env` first.
+- [x] Implement `/auth/me` and the workspace list. (D-29)
+- [x] Implement workspace creation and initial owner membership in one transaction. (D-30)
+- [x] Add a workspace permission guard and use it on one read endpoint. (D-31)
+- [ ] Add invitations and accept/revoke flows. (D-06: copy-the-invite-link flow; no email yet)
+- [x] Add role changes and session revocation after member removal/downgrade. (D-32; access is re-checked on every request, so no session revocation is needed for one workspace)
+- [x] Add audit events for sign-in security events, membership changes, and workspace settings. (D-33)
+- [x] Attempt cross-workspace access during manual verification and confirm it is denied. (2026-10-17: seeded Ana (Northwind engineer) got 404 `workspace_not_found` for GET, PATCH, and members of the Contoso workspace; Contoso unchanged. Automated in `apps/api/test/workspace-access.test.ts`.)
+- [x] Connect the web app to the API session: sign-in page, `/auth/me` replaces `sampleSession`, workspace from the membership list, sign-out in the account menu. (Added: the phase gate needs workspace access in the UI too.) (D-34)
 
 **Phase gate:** workspace-scoped access works in API and UI; every tenant-owned route checks membership.
 
 ## 7. Phase F — Data sources and CSV ingestion
 
-- [ ] Define the connector interface and normalized safe error format.
-- [ ] Add source and dataset metadata models and migrations.
-- [ ] Add source and dataset list/detail API routes with workspace authorization.
-- [ ] Build the source list and add-source UI flow.
-- [ ] Add private object storage configuration and random object keys.
+- [x] Define the connector interface and normalized safe error format. (D-35; `packages/connectors`)
+- [x] Add source and dataset metadata models and migrations. (D-36)
+- [x] Add source and dataset list/detail API routes with workspace authorization. (D-37)
+- [ ] Build the source list and add-source UI flow. Source and dataset lists are live (D-39); **the add-source flow is waiting** on the PostgreSQL connector (Phase G) for "validate" and on D-08 for uploads and schedules.
+- [x] Add private object storage configuration and random object keys. (D-38)
 - [ ] Add upload initiation and completion endpoints.
-- [ ] Enforce file-size, row-size, encoding, and content validation limits.
+- [ ] Enforce file-size, row-size, encoding, and content validation limits. (D-08: 50 MB, UTF-8, 1,000 columns, 1 MB rows)
 - [ ] Add streaming CSV parsing in the worker; reject malformed/oversized input safely.
 - [ ] Save an initial CSV profile and schema snapshot.
 - [ ] Show upload status, parse errors, and profile results in the UI.

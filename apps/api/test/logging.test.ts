@@ -27,7 +27,16 @@ describe('request IDs and request logs', () => {
   let url: string;
   before(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule.register({ logLevel: 'info', logStream: stream })],
+      imports: [
+        AppModule.register({
+          logLevel: 'info',
+          logStream: stream,
+          databaseUrl: 'postgresql://unused@127.0.0.1:1/unused',
+          redisUrl: 'redis://unused',
+          webOrigin: 'http://localhost:5173',
+          secureCookies: false,
+        }),
+      ],
     })
       .overrideProvider(DEPENDENCY_CHECKS)
       .useValue([])

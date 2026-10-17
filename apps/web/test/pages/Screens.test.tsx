@@ -3,14 +3,17 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { DatasetsPage } from '../../src/pages/DatasetsPage.tsx';
 import { IncidentsPage } from '../../src/pages/IncidentsPage.tsx';
 import { OverviewPage } from '../../src/pages/OverviewPage.tsx';
 import { SettingsPage } from '../../src/pages/SettingsPage.tsx';
-import { SourcesPage } from '../../src/pages/SourcesPage.tsx';
+import { WithSession } from '../session.tsx';
 
 function renderPage(page: ReactNode) {
-  render(<MemoryRouter>{page}</MemoryRouter>);
+  render(
+    <WithSession>
+      <MemoryRouter>{page}</MemoryRouter>
+    </WithSession>,
+  );
 }
 
 /** Data rows of a table found by its caption (the header row is skipped). */
@@ -22,8 +25,6 @@ function bodyRows(caption: string) {
 describe.each([
   ['Overview', <OverviewPage key="o" />],
   ['Incidents', <IncidentsPage key="i" />],
-  ['Data sources', <SourcesPage key="s" />],
-  ['Datasets', <DatasetsPage key="d" />],
   ['Workspace settings', <SettingsPage key="w" />],
 ])('%s screen', (title, page) => {
   it('has its title and says the data is sample data', () => {

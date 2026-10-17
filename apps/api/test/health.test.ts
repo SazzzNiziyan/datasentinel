@@ -13,7 +13,15 @@ async function startApp(
   checks: DependencyCheck[],
 ): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
-    imports: [AppModule.register({ logLevel: 'silent' })],
+    imports: [
+      AppModule.register({
+        logLevel: 'silent',
+        databaseUrl: 'postgresql://unused@127.0.0.1:1/unused',
+        redisUrl: 'redis://unused',
+        webOrigin: 'http://localhost:5173',
+        secureCookies: false,
+      }),
+    ],
   })
     .overrideProvider(DEPENDENCY_CHECKS)
     .useValue(checks)

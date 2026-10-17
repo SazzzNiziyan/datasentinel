@@ -6,7 +6,7 @@ import { NavList } from './NavList.tsx';
 import { ApiStatusBanner } from './ApiStatusBanner.tsx';
 import { OfflineBanner } from './OfflineBanner.tsx';
 import { RouteErrorBoundary } from './RouteErrorBoundary.tsx';
-import { sampleSession } from './sampleSession.ts';
+import { useSignedIn } from './session.ts';
 import './AppShell.css';
 
 function Brand() {
@@ -20,6 +20,7 @@ function Brand() {
 
 /** Persistent navigation, workspace bar, and page frame around every screen. */
 export function AppShell() {
+  const { workspace } = useSignedIn();
   // Below 1024px the navigation lives in a modal <dialog>: it traps focus,
   // closes on Escape, and returns focus to the Menu button by itself.
   const drawer = useRef<HTMLDialogElement>(null);
@@ -95,8 +96,7 @@ export function AppShell() {
           Menu
         </button>
         <div className="workspace">
-          <span className="workspace__name">{sampleSession.workspace.name}</span>
-          {sampleSession.isSample && <span className="sample-tag">Sample data</span>}
+          <span className="workspace__name">{workspace?.workspaceName}</span>
         </div>
         <AccountMenu />
       </header>

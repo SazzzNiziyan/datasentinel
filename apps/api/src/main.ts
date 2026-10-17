@@ -10,9 +10,14 @@ async function bootstrap() {
   // Fail fast with a safe message (names only, never values).
   const env = loadApiEnv();
   // Startup messages wait for the JSON logger instead of plain text.
-  const app = await NestFactory.create(AppModule.register({ logLevel: env.LOG_LEVEL }), {
-    bufferLogs: true,
+  const module = AppModule.register({
+    logLevel: env.LOG_LEVEL,
+    databaseUrl: env.DATABASE_URL,
+    redisUrl: env.REDIS_URL,
+    webOrigin: env.WEB_ORIGIN,
+    secureCookies: env.NODE_ENV === 'production',
   });
+  const app = await NestFactory.create(module, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   configureHttp(app, env.WEB_ORIGIN);
   app.enableShutdownHooks();

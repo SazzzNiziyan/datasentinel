@@ -1,0 +1,66 @@
+/* One white panel on paper; the ink rule on its left echoes the nav rail. */
+.sign-in {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.sign-in__panel {
+  width: min(26rem, 100%);
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-left: var(--space-2) solid var(--color-border-strong);
+}
+
+.sign-in__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: var(--weight-strong);
+}
+
+.sign-in__title {
+  font-size: var(--text-display);
+}
+
+.sign-in__form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sign-in__field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-compact);
+  font-weight: var(--weight-strong);
+}
+
+.sign-in__field .text-input {
+  font-weight: var(--weight-regular);
+}
+
+.sign-in__error {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--space-1) solid var(--color-status-critical);
+  font-size: var(--text-compact);
+}
+
+.sign-in__error-title {
+  font-weight: var(--weight-strong);
+}
+
+@media (max-width: 39.99rem) {
+  .sign-in__panel {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .sign-in__title {
+    font-size: var(--text-heading);
+  }
+}

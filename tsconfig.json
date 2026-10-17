@@ -7,6 +7,8 @@
     { "path": "./packages/config" },
     { "path": "./packages/config/test" },
     { "path": "./packages/db" },
+    { "path": "./packages/connectors" },
+    { "path": "./packages/connectors/test" },
     { "path": "./apps/api" },
     { "path": "./apps/worker" },
     { "path": "./apps/web" }

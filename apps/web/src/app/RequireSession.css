@@ -1,0 +1,7 @@
+/* Full-page states shown before the app shell: centred on paper. */
+.session-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+}

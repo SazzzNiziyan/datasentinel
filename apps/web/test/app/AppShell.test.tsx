@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../../src/app/AppShell.tsx';
 import { PageFrame } from '../../src/components/PageFrame.tsx';
+import { WithSession } from '../session.tsx';
 
 // happy-dom cannot resize the viewport, so matchMedia is replaced with one
 // whose "change" listeners the test can fire. Stubbed only where unavoidable.
@@ -36,9 +37,11 @@ describe('AppShell', () => {
     setViewport(390);
     const user = userEvent.setup();
     render(
-      <MemoryRouter>
-        <AppShell />
-      </MemoryRouter>,
+      <WithSession>
+        <MemoryRouter>
+          <AppShell />
+        </MemoryRouter>
+      </WithSession>,
     );
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     expect(screen.getByRole('dialog', { name: 'Navigation' })).toBeVisible();
@@ -55,13 +58,15 @@ describe('AppShell', () => {
       throw new Error('render failed');
     }
     render(
-      <MemoryRouter initialEntries={['/broken']}>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/broken" element={<Broken />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <WithSession>
+        <MemoryRouter initialEntries={['/broken']}>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/broken" element={<Broken />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </WithSession>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('This page failed to display');
     expect(screen.getAllByRole('link', { name: 'Incidents' })[0]).toBeVisible();
@@ -95,13 +100,15 @@ describe('AppShell', () => {
 
 function renderTwoPages() {
   render(
-    <MemoryRouter>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route path="/" element={<PageFrame title="Overview" />} />
-          <Route path="/incidents" element={<PageFrame title="Incidents" />} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <WithSession>
+      <MemoryRouter>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<PageFrame title="Overview" />} />
+            <Route path="/incidents" element={<PageFrame title="Incidents" />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </WithSession>,
   );
 }
