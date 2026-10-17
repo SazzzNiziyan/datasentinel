@@ -118,14 +118,15 @@ model Membership {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  ownedSources     DataSource[]
-  ownedDatasets    Dataset[]
-  invitationsSent  Invitation[]
-  uploadsCreated   Upload[]
-  connectionTests  ConnectionTest[]
-  rulesCreated     QualityRule[]
-  schedulesCreated Schedule[]
-  ruleRevisions    RuleRevision[]
+  ownedSources      DataSource[]
+  ownedDatasets     Dataset[]
+  invitationsSent   Invitation[]
+  uploadsCreated    Upload[]
+  connectionTests   ConnectionTest[]
+  rulesCreated      QualityRule[]
+  schedulesCreated  Schedule[]
+  integrationTokens IntegrationToken[]
+  ruleRevisions     RuleRevision[]
 
   @@unique([workspaceId, userId])
   /// Target of composite foreign keys that keep owners in the same workspace.
@@ -202,12 +203,14 @@ model DataSource {
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner           Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
-  credentials     SourceCredential[]
-  datasets        Dataset[]
-  connectionTests ConnectionTest[]
-  uploads         Upload[]
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner             Membership?        @relation(fields: [workspaceId, ownerMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+  credentials       SourceCredential[]
+  datasets          Dataset[]
+  connectionTests   ConnectionTest[]
+  uploads           Upload[]
+  integrationTokens IntegrationToken[]
+  pipelineRuns      PipelineRun[]
 
   @@unique([workspaceId, name])
   /// Target of composite foreign keys that keep children in the same workspace.
@@ -259,6 +262,7 @@ model Dataset {
   schemaSnapshots  SchemaSnapshot[]
   rules            QualityRule[]
   schedules        Schedule[]
+  pipelineRuns     PipelineRun[]
 
   @@unique([workspaceId, sourceId, stableKey])
   /// Target of composite foreign keys that keep uploads in the same source.
@@ -605,5 +609,68 @@ model ScheduleOccurrence {
 
   @@unique([scheduleId, scheduledFor])
   @@index([workspaceId, createdAt])
+  /// The scheduler's stranded-occurrence retry (D-70).
+  @@index([status, createdAt])
   @@map("schedule_occurrences")
+}
+
+/// A source-scoped credential for pipeline-run events (D-73). The token
+/// shown once is `dsp_{id}_{secret}`; only SHA-256 of the secret is kept.
+model IntegrationToken {
+  id                    String    @id @db.Uuid
+  workspaceId           String    @map("workspace_id") @db.Uuid
+  sourceId              String    @map("source_id") @db.Uuid
+  name                  String
+  secretHash            Bytes     @map("secret_hash")
+  createdByMembershipId String?   @map("created_by_membership_id") @db.Uuid
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt            DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt             DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  source    DataSource  @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  createdBy Membership? @relation(fields: [workspaceId, createdByMembershipId], references: [workspaceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspaceId, sourceId])
+  @@map("integration_tokens")
+}
+
+/// FR-07 run states.
+enum PipelineRunStatus {
+  queued
+  running
+  succeeded
+  failed
+  timed_out
+  cancelled
+  unknown
+}
+
+/// A run reported by an external job (D-73). `externalRunId` is unique per
+/// source, which makes event ingestion idempotent.
+model PipelineRun {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  workspaceId      String            @map("workspace_id") @db.Uuid
+  sourceId         String            @map("source_id") @db.Uuid
+  datasetId        String?           @map("dataset_id") @db.Uuid
+  externalRunId    String            @map("external_run_id")
+  name             String
+  status           PipelineRunStatus
+  /// schedule, manual, upstream, or unknown.
+  trigger          String
+  startedAt        DateTime?         @map("started_at") @db.Timestamptz(3)
+  endedAt          DateTime?         @map("ended_at") @db.Timestamptz(3)
+  lastEventAt      DateTime          @map("last_event_at") @db.Timestamptz(3)
+  correlationId    String?           @map("correlation_id")
+  /// Redacted, at most 2,000 characters.
+  summary          String?
+  createdByTokenId String?           @map("created_by_token_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  source  DataSource @relation(fields: [workspaceId, sourceId], references: [workspaceId, id], onDelete: Cascade)
+  dataset Dataset?   @relation(fields: [workspaceId, sourceId, datasetId], references: [workspaceId, sourceId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([sourceId, externalRunId])
+  @@index([workspaceId, createdAt])
+  @@map("pipeline_runs")
 }

@@ -7,5 +7,6 @@ export * from './invitations.ts';
 export * from './queues.ts';
 export * from './rules.ts';
 export * from './schedules.ts';
+export * from './pipeline-runs.ts';
 export * from './sources.ts';
 export * from './uploads.ts';

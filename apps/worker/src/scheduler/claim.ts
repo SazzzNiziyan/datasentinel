@@ -20,12 +20,29 @@ type DueRow = {
   nextRunAt: Date;
 };
 
+/** Where one due schedule goes next; `next` is null to pause it. */
+type Plan = { row: DueRow; next: Date | null; missed: number };
+
+function plan(row: DueRow, now: Date): Plan {
+  const parsed = validateSchedule(row.definition);
+  if (!parsed.ok) return { row, next: null, missed: 0 };
+  let next = nextOccurrence(parsed.definition, row.nextRunAt, row.anchorAt);
+  let missed = 0;
+  while (next.getTime() <= now.getTime() && missed < MISSED_LIMIT) {
+    missed += 1;
+    next = nextOccurrence(parsed.definition, next, row.anchorAt);
+  }
+  if (next.getTime() <= now.getTime()) next = nextOccurrence(parsed.definition, now, row.anchorAt);
+  return { row, next, missed };
+}
+
 /** Claims every enabled schedule due at `now` (D-70). Rows are locked with
  * SKIP LOCKED, so parallel schedulers split the work instead of waiting,
  * and the occurrence's unique (schedule, time) key makes a second claim of
  * the same due time a no-op. Each schedule moves on to its first due time
  * after `now`: missed times are counted, not run. A schedule whose stored
- * definition no longer validates is paused rather than guessed at. */
+ * definition no longer validates is paused rather than guessed at. A pass
+ * is three statements however many schedules are due. */
 export async function claimDueOccurrences(
   prisma: PrismaClient,
   now: Date,
@@ -40,47 +57,68 @@ export async function claimDueOccurrences(
        ORDER BY next_run_at
        LIMIT ${limit}
        FOR UPDATE SKIP LOCKED`;
-    const claimed: ClaimedOccurrence[] = [];
-    for (const row of due) {
-      const parsed = validateSchedule(row.definition);
-      if (!parsed.ok) {
-        await tx.schedule.update({ where: { id: row.id }, data: { nextRunAt: null } });
-        continue;
-      }
-      let next = nextOccurrence(parsed.definition, row.nextRunAt, row.anchorAt);
-      let missed = 0;
-      while (next.getTime() <= now.getTime() && missed < MISSED_LIMIT) {
-        missed += 1;
-        next = nextOccurrence(parsed.definition, next, row.anchorAt);
-      }
-      if (next.getTime() <= now.getTime()) next = nextOccurrence(parsed.definition, now, row.anchorAt);
-      const created = await tx.scheduleOccurrence.createManyAndReturn({
-        data: [
-          {
-            workspaceId: row.workspaceId,
-            scheduleId: row.id,
-            scheduledFor: row.nextRunAt,
-            missedBefore: missed,
-          },
-        ],
-        skipDuplicates: true,
-        select: { id: true },
-      });
-      await tx.schedule.update({
-        where: { id: row.id },
-        data: { nextRunAt: next, lastRunAt: now },
-      });
-      const occurrence = created[0];
-      if (occurrence !== undefined) {
-        claimed.push({
-          id: occurrence.id,
-          workspaceId: row.workspaceId,
-          scheduleId: row.id,
-          scheduledFor: row.nextRunAt,
-          missedBefore: missed,
-        });
-      }
-    }
-    return claimed;
+    if (due.length === 0) return [];
+    const plans = due.map((row) => plan(row, now));
+    const runnable = plans.filter((p) => p.next !== null);
+    const created =
+      runnable.length === 0
+        ? []
+        : await tx.scheduleOccurrence.createManyAndReturn({
+            data: runnable.map(({ row, missed }) => ({
+              workspaceId: row.workspaceId,
+              scheduleId: row.id,
+              scheduledFor: row.nextRunAt,
+              missedBefore: missed,
+            })),
+            skipDuplicates: true,
+            select: { id: true, scheduleId: true },
+          });
+    // A paused schedule keeps its last run time.
+    await tx.$executeRaw`
+      UPDATE schedules AS s
+         SET next_run_at = v.next::timestamptz,
+             last_run_at = CASE WHEN v.next IS NULL THEN s.last_run_at ELSE ${now} END,
+             updated_at = now()
+        FROM unnest(${plans.map((p) => p.row.id)}::text[],
+                    ${plans.map((p) => p.next?.toISOString() ?? null)}::text[]) AS v(id, next)
+       WHERE s.id = v.id::uuid`;
+    const byId = new Map(runnable.map((p) => [p.row.id, p]));
+    return created.flatMap(({ id, scheduleId }) => {
+      const p = byId.get(scheduleId);
+      return p === undefined
+        ? []
+        : [
+            {
+              id,
+              workspaceId: p.row.workspaceId,
+              scheduleId,
+              scheduledFor: p.row.nextRunAt,
+              missedBefore: p.missed,
+            },
+          ];
+    });
+  });
+}
+
+/** Occurrences claimed before `before` whose jobs were never queued: the
+ * claiming process stopped, or the queue was down, between claim and
+ * dispatch (D-70). Dispatching one again is safe: its check runs and job
+ * IDs are keyed by the occurrence. */
+export function strandedOccurrences(
+  prisma: PrismaClient,
+  before: Date,
+  limit = 100,
+): Promise<ClaimedOccurrence[]> {
+  return prisma.scheduleOccurrence.findMany({
+    where: { status: 'pending', createdAt: { lt: before } },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      workspaceId: true,
+      scheduleId: true,
+      scheduledFor: true,
+      missedBefore: true,
+    },
   });
 }

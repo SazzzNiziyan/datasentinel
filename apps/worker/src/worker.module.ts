@@ -29,20 +29,28 @@ export interface WorkerModuleOptions extends WorkerOptions {
   scheduler?: boolean;
 }
 
-/** A sources-queue producer that connects on first use (D-71). */
+/** A sources-queue producer that connects on first use and adds each
+ * batch in one round trip (D-71). */
 function sourcesProducer(redisUrl: string): Enqueue {
   let queue: Queue | undefined;
-  return async (name, data, jobId) => {
+  return async (jobs) => {
+    if (jobs.length === 0) return;
     queue ??= new Queue(SOURCE_QUEUE, {
       connection: new Redis(redisUrl, { maxRetriesPerRequest: 1 }),
     });
-    await queue.add(name, data, {
-      jobId,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: true,
-    });
+    await queue.addBulk(
+      jobs.map(({ name, data, jobId }) => ({
+        name,
+        data,
+        opts: {
+          jobId,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      })),
+    );
   };
 }
 

@@ -7,12 +7,15 @@ import {
 import type { PrismaClient } from '@datasentinel/db';
 import type { ClaimedOccurrence } from './claim.js';
 
-/** Adds one job to the sources queue; the job ID dedupes repeats. */
-export type Enqueue = (
-  name: string,
-  data: ProfileDatasetJobData | RunCheckJobData,
-  jobId: string,
-) => Promise<void>;
+/** One sources-queue job; the job ID dedupes repeats. */
+export type SourceJob = {
+  name: string;
+  data: ProfileDatasetJobData | RunCheckJobData;
+  jobId: string;
+};
+
+/** Adds jobs to the sources queue in one round trip. */
+export type Enqueue = (jobs: readonly SourceJob[]) => Promise<void>;
 
 export interface DispatchDeps {
   prisma: PrismaClient;
@@ -22,6 +25,7 @@ export interface DispatchDeps {
 /** Queues the work of one claimed occurrence (D-71), or records why it was
  * skipped: the dataset or its source is not active, or a check from an
  * earlier occurrence of the same schedule is still queued or running.
+ * Dispatching the same occurrence again (a stranded retry) is safe.
  * A database dataset is profiled first and its rules follow the profile;
  * otherwise the checks are queued at once. */
 export async function dispatchOccurrence(
@@ -48,7 +52,7 @@ export async function dispatchOccurrence(
     where: {
       workspaceId: occurrence.workspaceId,
       status: { in: ['queued', 'running'] },
-      occurrence: { scheduleId: occurrence.scheduleId },
+      occurrence: { scheduleId: occurrence.scheduleId, id: { not: occurrence.id } },
     },
   });
   if (busy > 0) {
@@ -56,15 +60,17 @@ export async function dispatchOccurrence(
     return;
   }
   if (schedule.targetType === 'dataset' && schedule.dataset.source.type === 'postgres') {
-    await deps.enqueue(
-      PROFILE_DATASET_JOB,
+    await deps.enqueue([
       {
-        workspaceId: occurrence.workspaceId,
-        datasetId: schedule.datasetId,
-        occurrenceId: occurrence.id,
+        name: PROFILE_DATASET_JOB,
+        data: {
+          workspaceId: occurrence.workspaceId,
+          datasetId: schedule.datasetId,
+          occurrenceId: occurrence.id,
+        },
+        jobId: `profile-${schedule.datasetId}-${occurrence.id}`,
       },
-      `profile-${schedule.datasetId}-${occurrence.id}`,
-    );
+    ]);
   } else {
     await queueScheduledChecks(deps, occurrence.id);
   }
@@ -72,8 +78,10 @@ export async function dispatchOccurrence(
 }
 
 /** Creates and queues one check run per enabled rule of the occurrence's
- * target, at the rule's current revision. The idempotency key
- * `schedule:{occurrenceId}:{ruleId}` makes a repeat create nothing new. */
+ * target, at the rule's current revision, with one insert, one read, and
+ * one queue call. The idempotency key `schedule:{occurrenceId}:{ruleId}`
+ * makes a repeat create nothing new; runs still queued are queued again
+ * under the same job IDs, which the queue dedupes. */
 export async function queueScheduledChecks(
   { prisma, enqueue }: DispatchDeps,
   occurrenceId: string,
@@ -100,31 +108,38 @@ export async function queueScheduledChecks(
       revisions: { orderBy: { version: 'desc' }, take: 1, select: { id: true } },
     },
   });
-  let queued = 0;
-  for (const rule of rules) {
+  const runs = rules.flatMap((rule) => {
     const revisionId = rule.revisions[0]?.id;
-    if (revisionId === undefined) continue;
-    const idempotencyKey = `schedule:${occurrenceId}:${rule.id}`;
-    await prisma.checkRun.createMany({
-      data: [
-        {
-          workspaceId,
-          ruleId: rule.id,
-          ruleRevisionId: revisionId,
-          trigger: 'schedule',
-          idempotencyKey,
-          occurrenceId,
-        },
-      ],
-      skipDuplicates: true,
-    });
-    const run = await prisma.checkRun.findUnique({
-      where: { workspaceId_idempotencyKey: { workspaceId, idempotencyKey } },
-      select: { id: true, status: true },
-    });
-    if (run?.status !== 'queued') continue;
-    await enqueue(RUN_CHECK_JOB, { workspaceId, checkRunId: run.id }, `check-${run.id}`);
-    queued += 1;
-  }
-  return queued;
+    return revisionId === undefined
+      ? []
+      : [
+          {
+            workspaceId,
+            ruleId: rule.id,
+            ruleRevisionId: revisionId,
+            trigger: 'schedule' as const,
+            idempotencyKey: `schedule:${occurrenceId}:${rule.id}`,
+            occurrenceId,
+          },
+        ];
+  });
+  if (runs.length === 0) return 0;
+  await prisma.checkRun.createMany({ data: runs, skipDuplicates: true });
+  const queued = await prisma.checkRun.findMany({
+    where: {
+      workspaceId,
+      idempotencyKey: { in: runs.map((r) => r.idempotencyKey) },
+      status: 'queued',
+    },
+    select: { id: true },
+  });
+  if (queued.length === 0) return 0;
+  await enqueue(
+    queued.map((run) => ({
+      name: RUN_CHECK_JOB,
+      data: { workspaceId, checkRunId: run.id },
+      jobId: `check-${run.id}`,
+    })),
+  );
+  return queued.length;
 }

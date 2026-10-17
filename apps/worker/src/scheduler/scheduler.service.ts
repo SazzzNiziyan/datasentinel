@@ -6,7 +6,10 @@ import {
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from '@nestjs/common';
-import { claimDueOccurrences, type ClaimedOccurrence } from './claim.js';
+import { claimDueOccurrences, strandedOccurrences, type ClaimedOccurrence } from './claim.js';
+
+/** A claimed occurrence still pending after this long was never queued. */
+const STRANDED_AFTER_MS = 5 * 60_000;
 
 export const SCHEDULER_DEPS = Symbol('SCHEDULER_DEPS');
 
@@ -18,8 +21,9 @@ export interface SchedulerDeps {
   tickMs?: number;
 }
 
-/** Wakes every 30 seconds and claims due schedule occurrences (D-70). Any
- * number of worker processes may run it: claims never overlap. */
+/** Wakes every 30 seconds, claims due schedule occurrences, and retries
+ * stranded ones (D-70). Any number of worker processes may run it: claims
+ * never overlap and dispatch is safe to repeat. */
 @Injectable()
 export class SchedulerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(SchedulerService.name);
@@ -42,14 +46,18 @@ export class SchedulerService implements OnApplicationBootstrap, OnApplicationSh
     this.running = true;
     try {
       const claimed = await claimDueOccurrences(this.deps.prisma, now);
-      for (const occurrence of claimed) {
+      const fresh = new Set(claimed.map((o) => o.id));
+      const stranded = (
+        await strandedOccurrences(this.deps.prisma, new Date(now.getTime() - STRANDED_AFTER_MS))
+      ).filter((o) => !fresh.has(o.id));
+      for (const occurrence of [...claimed, ...stranded]) {
         await this.deps.dispatch(occurrence).catch((error: unknown) => {
           this.logger.error(
             `occurrence ${occurrence.id} could not be queued: ${error instanceof Error ? error.name : 'error'}`,
           );
         });
       }
-      return claimed.length;
+      return claimed.length + stranded.length;
     } catch (error) {
       this.logger.error(`scheduler pass failed: ${error instanceof Error ? error.name : 'error'}`);
       return 0;

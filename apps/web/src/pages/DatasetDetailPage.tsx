@@ -16,6 +16,7 @@ import { PageFrame } from '../components/PageFrame.tsx';
 import { StatusMark, type Tone } from '../components/StatusMark.tsx';
 import { formatCount, formatTime } from '../format.ts';
 import { DatasetRules } from '../rules/DatasetRules.tsx';
+import { DatasetSchedules } from '../schedules/DatasetSchedules.tsx';
 import { UploadCsvDialog } from '../uploads/UploadCsvDialog.tsx';
 import { canEdit, columnTypeLabel, lifecycleLabel } from './labels.ts';
 import { LifecycleActions } from './LifecycleActions.tsx';
@@ -268,6 +269,14 @@ export function DatasetDetailPage() {
           active={d.status === 'active'}
           editable={canEdit(workspace.role) && d.status !== 'archived'}
           columns={succeeded?.columns ?? []}
+        />
+      )}
+
+      {workspace !== undefined && (
+        <DatasetSchedules
+          workspaceId={workspace.workspaceId}
+          datasetId={d.id}
+          editable={canEdit(workspace.role) && d.status !== 'archived'}
         />
       )}
 

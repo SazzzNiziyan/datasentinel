@@ -156,3 +156,54 @@ export function nextOccurrence(definition: ScheduleDefinition, after: Date, anch
   }
   throw new Error('no occurrence within eight days');
 }
+
+/** Schedules one dataset may have, so one dataset cannot flood the queue. */
+export const MAX_SCHEDULES_PER_DATASET = 10;
+
+/** POST …/datasets/{datasetId}/schedules (engineer+, audited, D-72).
+ * Without `ruleId` the schedule profiles a database dataset and then runs
+ * all its enabled rules; with it, the schedule runs that one rule. */
+export const CreateScheduleRequest = z.strictObject({
+  ruleId: z.uuid().optional(),
+  enabled: z.boolean().default(true),
+  definition: z.unknown(),
+});
+export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequest>;
+
+/** PATCH …/schedules/{scheduleId} (engineer+, audited, D-72). `enabled:
+ * false` pauses; `true` resumes at the next due time, without running the
+ * times missed while paused. A new definition restarts the interval from
+ * now. */
+export const UpdateScheduleRequest = z
+  .strictObject({
+    enabled: z.boolean().optional(),
+    definition: z.unknown().optional(),
+  })
+  .refine((r) => r.enabled !== undefined || r.definition !== undefined);
+export type UpdateScheduleRequest = z.infer<typeof UpdateScheduleRequest>;
+
+export type ScheduleOccurrenceSummary = {
+  id: string;
+  scheduledFor: string;
+  status: 'pending' | 'enqueued' | 'skipped';
+  /** `dataset_not_active` or `previous_still_running` (D-71). */
+  skipReason: string | null;
+  /** Due times passed over before this one (D-70). */
+  missedBefore: number;
+};
+
+export type ScheduleDetail = {
+  id: string;
+  datasetId: string;
+  /** Set when the schedule runs one rule. */
+  ruleId: string | null;
+  target: 'dataset' | 'rule';
+  definition: ScheduleDefinition;
+  enabled: boolean;
+  /** Null while paused. */
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  recentOccurrences: ScheduleOccurrenceSummary[];
+};

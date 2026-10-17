@@ -232,6 +232,7 @@ describe('Dataset page', () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => dataset,
       'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/schedules': () => [],
       'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [
         upload({
@@ -288,6 +289,7 @@ describe('Dataset page', () => {
         lastSuccessfulProfile: null,
       }),
       'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/schedules': () => [],
       'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
@@ -305,6 +307,7 @@ describe('Dataset page', () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => ({ ...dataset, latestProfile: failedProfile }),
       'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/schedules': () => [],
       'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
@@ -322,6 +325,7 @@ describe('Dataset page', () => {
       'GET /workspaces/w1/datasets/d9': () =>
         reply(404, { title: 'Dataset not found.', status: 404, code: 'dataset_not_found' }),
       'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/schedules': () => [],
       'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     });
@@ -382,6 +386,7 @@ describe('Accessibility of the upload screens', () => {
     routeApi({
       'GET /workspaces/w1/datasets/d9': () => dataset,
       'GET /workspaces/w1/datasets/d9/rules': () => [],
+      'GET /workspaces/w1/datasets/d9/schedules': () => [],
       'GET /workspaces/w1/datasets/d9/profiles': () => [],
       'GET /workspaces/w1/uploads?datasetId=d9': () => [
         upload({ status: 'succeeded', rowCount: 4 }),

@@ -109,6 +109,7 @@ describe('Dataset actions', () => {
   const uploads = {
     'GET /workspaces/w1/uploads?datasetId=d9': () => [],
     'GET /workspaces/w1/datasets/d9/rules': () => [],
+    'GET /workspaces/w1/datasets/d9/schedules': () => [],
     'GET /workspaces/w1/datasets/d9/profiles': () => [],
   };
 

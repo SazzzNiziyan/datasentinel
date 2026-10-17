@@ -24,6 +24,9 @@ import { APP_OPTIONS, type AppOptions } from './options.js';
 import { ProblemFilter } from './problem.js';
 import { LifecycleController } from './sources/lifecycle.controller.js';
 import { RulesController } from './rules/rules.controller.js';
+import { SchedulesController } from './schedules/schedules.controller.js';
+import { IntegrationTokensController } from './pipeline-runs/integration-tokens.controller.js';
+import { PipelineEventsController } from './pipeline-runs/pipeline-events.controller.js';
 import { ConnectionTestsController } from './sources/connection-tests.controller.js';
 import { BullSourceJobs, SOURCE_JOBS } from './sources/source-jobs.js';
 import { SourcesController } from './sources/sources.controller.js';
@@ -50,6 +53,9 @@ export class AppModule {
         LifecycleController,
         ConnectionTestsController,
         RulesController,
+        SchedulesController,
+        IntegrationTokensController,
+        PipelineEventsController,
         UploadsController,
         InvitationsController,
         AcceptInvitationController,

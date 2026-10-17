@@ -58,7 +58,7 @@ export class SourceQueueService implements OnApplicationBootstrap, OnApplication
     this.connection?.disconnect();
   }
 
-  private process(job: Job) {
+  private async process(job: Job) {
     switch (job.name) {
       case TEST_CONNECTION_JOB: {
         const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
