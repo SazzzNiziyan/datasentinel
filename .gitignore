@@ -47,16 +47,19 @@ playwright-report/
 test-results/
 
 # Editors and OS
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
 .idea/
 *.swp
 .DS_Store
 Thumbs.db
 
-# Claude Code local-only settings
-.claude/settings.local.json
+# AI assistant configs and local prompts
+.claude/
+.codex/
+CLAUDE.local.md
+
+# Documentation
+docs/
 
 # Playwright MCP plugin output (screenshots, page snapshots, console logs)
 .playwright-mcp/
