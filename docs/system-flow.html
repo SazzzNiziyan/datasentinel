@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataSentinel — Liquid Glass Architecture & Operational Flow</title>
+    <style>
+      :root {
+        --bg: #07090e;
+        --glass-surface: rgba(255, 255, 255, 0.04);
+        --glass-surface-elevated: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-border-highlight: rgba(255, 255, 255, 0.28);
+        --glass-specular: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.25) 0%,
+          rgba(255, 255, 255, 0.02) 60%
+        );
+        --text: #f5f5f7;
+        --text-secondary: #a1a1a6;
+        --text-tertiary: #6e6e73;
+        --apple-blue: #2997ff;
+        --apple-blue-glow: rgba(41, 151, 255, 0.45);
+        --apple-cyan: #5de6de;
+        --apple-cyan-glow: rgba(93, 230, 222, 0.45);
+        --apple-purple: #bf5af2;
+        --apple-purple-glow: rgba(191, 90, 242, 0.45);
+        --apple-orange: #ff9f0a;
+        --apple-orange-glow: rgba(255, 159, 10, 0.45);
+        --apple-red: #ff453a;
+        --apple-red-glow: rgba(255, 69, 58, 0.45);
+        --apple-green: #30d158;
+        --apple-green-glow: rgba(48, 209, 88, 0.45);
+        --font-system:
+          -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue',
+          sans-serif;
+        --font-mono: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-system);
+        min-height: 100vh;
+        overflow-x: hidden;
+        padding: 32px 24px 64px 24px;
+        position: relative;
+      }
+
+      /* Ambient Liquid Orb Gradients (Apple Depth Illusion) */
+      .ambient-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .liquid-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.35;
+        animation: floatOrb 22s infinite alternate ease-in-out;
+      }
+
+      .orb-1 {
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, #0071e3 0%, rgba(0, 113, 227, 0) 70%);
+        top: -150px;
+        left: 10%;
+      }
+
+      .orb-2 {
+        width: 700px;
+        height: 700px;
+        background: radial-gradient(circle, #bf5af2 0%, rgba(191, 90, 242, 0) 70%);
+        bottom: -150px;
+        right: 5%;
+        animation-duration: 28s;
+        animation-delay: -5s;
+      }
+
+      .orb-3 {
+        width: 550px;
+        height: 550px;
+        background: radial-gradient(circle, #30d158 0%, rgba(48, 209, 88, 0) 70%);
+        top: 40%;
+        left: 45%;
+        animation-duration: 25s;
+        animation-delay: -10s;
+        opacity: 0.22;
+      }
+
+      @keyframes floatOrb {
+        0% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(60px, -40px) scale(1.12);
+        }
+        100% {
+          transform: translate(-40px, 50px) scale(0.92);
+        }
+      }
+
+      /* App Layout */
+      .app-wrapper {
+        max-width: 1360px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Apple Frosted Glass Header */
+      header {
+        background: var(--glass-surface);
+        backdrop-filter: blur(36px) saturate(200%);
+        -webkit-backdrop-filter: blur(36px) saturate(200%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 28px;
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 28px;
+        box-shadow:
+          0 20px 40px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+
+      .brand-group {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .brand-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(
+          135deg,
+          rgba(41, 151, 255, 0.9) 0%,
+          rgba(191, 90, 242, 0.9) 100%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow:
+          0 8px 24px rgba(41, 151, 255, 0.4),
+          inset 0 1px 1px rgba(255, 255, 255, 0.6);
+      }
+
+      .brand-icon svg {
+        width: 26px;
+        height: 26px;
+        fill: #ffffff;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.6px;
+        background: linear-gradient(180deg, #ffffff 0%, #d1d1d6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .tagline {
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 400;
+        margin-top: 2px;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      /* Apple Liquid Pill Buttons */
+      .glass-pill {
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        color: var(--text);
+        font-family: var(--font-system);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 9px 18px;
+        border-radius: 980px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        box-shadow:
+          0 4px 12px rgba(0, 0, 0, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .glass-pill:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1.5px);
+        box-shadow:
+          0 8px 20px rgba(0, 0, 0, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      }
+
+      .glass-pill.active {
+        background: linear-gradient(
+          135deg,
+          rgba(41, 151, 255, 0.3) 0%,
+          rgba(41, 151, 255, 0.15) 100%
+        );
+        border-color: var(--apple-blue);
+        color: #ffffff;
+        box-shadow:
+          0 0 20px var(--apple-blue-glow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
+
+      /* Main Grid Layout */
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 410px;
+        gap: 28px;
+      }
+
+      @media (max-width: 1120px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Liquid Glass Flow Canvas */
+      .glass-canvas {
+        background: var(--glass-surface);
+        backdrop-filter: blur(40px) saturate(190%);
+        -webkit-backdrop-filter: blur(40px) saturate(190%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 32px;
+        padding: 30px;
+        box-shadow:
+          0 30px 60px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Specular glass reflection overlay */
+      .glass-canvas::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 180px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.035) 0%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        pointer-events: none;
+        border-radius: 32px 32px 0 0;
+      }
+
+      .canvas-status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        font-size: 13px;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(48, 209, 88, 0.1);
+        border: 1px solid rgba(48, 209, 88, 0.25);
+        padding: 5px 12px;
+        border-radius: 980px;
+        color: var(--apple-green);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+
+      .pulse-dot {
+        width: 7px;
+        height: 7px;
+        background: var(--apple-green);
+        border-radius: 50%;
+        box-shadow: 0 0 12px var(--apple-green);
+        animation: liquidPulse 1.8s infinite ease-in-out;
+      }
+
+      @keyframes liquidPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.4);
+          opacity: 0.4;
+        }
+      }
+
+      /* Liquid SVG Visualizer */
+      svg.liquid-stage {
+        width: 100%;
+        height: 640px;
+        border-radius: 24px;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(255, 255, 255, 0.02) 0%,
+          rgba(0, 0, 0, 0.4) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      /* SVG Nodes & Connections */
+      .svg-node {
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .svg-node rect.node-card {
+        fill: rgba(22, 27, 34, 0.7);
+        stroke: rgba(255, 255, 255, 0.12);
+        stroke-width: 1.2;
+        rx: 16;
+        ry: 16;
+        transition: all 0.3s ease;
+        filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+      }
+
+      .svg-node:hover rect.node-card {
+        stroke: var(--apple-blue);
+        stroke-width: 2;
+        fill: rgba(30, 40, 55, 0.85);
+        filter: drop-shadow(0 0 20px var(--apple-blue-glow));
+      }
+
+      .svg-node.active rect.node-card {
+        stroke: var(--apple-cyan);
+        stroke-width: 2.2;
+        fill: rgba(18, 38, 54, 0.9);
+        filter: drop-shadow(0 0 24px var(--apple-cyan-glow));
+      }
+
+      /* Liquid Energy Paths */
+      .liquid-wire {
+        stroke: rgba(255, 255, 255, 0.08);
+        stroke-width: 2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-dasharray: 8 8;
+        animation: flowStream 25s linear infinite;
+      }
+
+      .liquid-wire.active-stream {
+        stroke: url(#liquid-gradient-blue);
+        stroke-width: 2.8;
+        stroke-dasharray: 10 10;
+        animation: flowStream 8s linear infinite;
+        filter: drop-shadow(0 0 8px var(--apple-blue-glow));
+      }
+
+      .liquid-wire.alert-stream {
+        stroke: url(#liquid-gradient-red);
+        stroke-width: 2.8;
+        stroke-dasharray: 8 8;
+        animation: flowStream 6s linear infinite;
+        filter: drop-shadow(0 0 10px var(--apple-red-glow));
+      }
+
+      @keyframes flowStream {
+        to {
+          stroke-dashoffset: -1000;
+        }
+      }
+
+      /* Apple Glass Inspector Panel */
+      .glass-inspector {
+        background: var(--glass-surface);
+        backdrop-filter: blur(40px) saturate(190%);
+        -webkit-backdrop-filter: blur(40px) saturate(190%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 32px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        box-shadow:
+          0 30px 60px rgba(0, 0, 0, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        position: relative;
+      }
+
+      .inspector-header-badge {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .apple-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 980px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .badge-blue {
+        background: rgba(41, 151, 255, 0.15);
+        color: var(--apple-blue);
+        border: 1px solid rgba(41, 151, 255, 0.35);
+      }
+      .badge-yellow {
+        background: rgba(255, 159, 10, 0.15);
+        color: var(--apple-orange);
+        border: 1px solid rgba(255, 159, 10, 0.35);
+      }
+      .badge-red {
+        background: rgba(255, 69, 58, 0.15);
+        color: var(--apple-red);
+        border: 1px solid rgba(255, 69, 58, 0.35);
+      }
+      .badge-purple {
+        background: rgba(191, 90, 242, 0.15);
+        color: var(--apple-purple);
+        border: 1px solid rgba(191, 90, 242, 0.35);
+      }
+      .badge-green {
+        background: rgba(48, 209, 88, 0.15);
+        color: var(--apple-green);
+        border: 1px solid rgba(48, 209, 88, 0.35);
+      }
+
+      .step-counter {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+
+      .inspector-title {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.4px;
+        color: #ffffff;
+        line-height: 1.3;
+      }
+
+      .inspector-body {
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      /* Glass Metric Tiles */
+      .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .metric-card {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 14px 16px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .metric-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-tertiary);
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+
+      .metric-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ffffff;
+        font-family: var(--font-mono);
+      }
+
+      /* Rationale Glass Quote */
+      .glass-callout {
+        background: linear-gradient(
+          135deg,
+          rgba(41, 151, 255, 0.08) 0%,
+          rgba(93, 230, 222, 0.03) 100%
+        );
+        border-left: 3px solid var(--apple-blue);
+        border-radius: 0 16px 16px 0;
+        padding: 14px 16px;
+        font-size: 12.5px;
+        color: #e1e1e6;
+        line-height: 1.55;
+      }
+
+      .glass-callout strong {
+        color: var(--apple-blue);
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 600;
+      }
+
+      /* Glass Code Box */
+      .code-glass {
+        background: rgba(10, 14, 20, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 16px;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: #c9d1d9;
+        line-height: 1.6;
+        max-height: 220px;
+        overflow-x: auto;
+        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Step Timeline Bar (Liquid Floating Ribbon) */
+      .step-ribbon {
+        margin-top: 28px;
+        background: var(--glass-surface);
+        backdrop-filter: blur(36px) saturate(200%);
+        -webkit-backdrop-filter: blur(36px) saturate(200%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 24px;
+        padding: 12px 18px;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+      }
+
+      .step-ribbon::-webkit-scrollbar {
+        display: none;
+      }
+
+      .ribbon-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 18px;
+        border-radius: 980px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .ribbon-item:hover {
+        background: rgba(255, 255, 255, 0.09);
+        color: #ffffff;
+        transform: translateY(-2px);
+      }
+
+      .ribbon-item.active {
+        background: linear-gradient(
+          135deg,
+          rgba(41, 151, 255, 0.35) 0%,
+          rgba(93, 230, 222, 0.2) 100%
+        );
+        border-color: rgba(93, 230, 222, 0.6);
+        color: #ffffff;
+        box-shadow:
+          0 0 16px rgba(41, 151, 255, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
+
+      .step-index-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+
+      .ribbon-item.active .step-index-dot {
+        background: #ffffff;
+        color: #07090e;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Liquid Ambient Orbs -->
+    <div class="ambient-canvas">
+      <div class="liquid-orb orb-1"></div>
+      <div class="liquid-orb orb-2"></div>
+      <div class="liquid-orb orb-3"></div>
+    </div>
+
+    <div class="app-wrapper">
+      <!-- Apple Glass Header -->
+      <header>
+        <div class="brand-group">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div>
+            <h1>DataSentinel Operational Architecture</h1>
+            <p class="tagline">
+              Interactive Apple Liquid Glass Flow &bull; Modular Monolith &bull; Decisions D-01 to
+              D-133
+            </p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="glass-pill active" id="btn-toggle-play" onclick="togglePlayback()">
+            <span id="play-icon">&Verbar;&Verbar;</span>
+            <span id="play-text">Pause Liquid Flow</span>
+          </button>
+          <button class="glass-pill" onclick="selectStep(0)">Restart</button>
+        </div>
+      </header>
+
+      <!-- Main Visual Stage -->
+      <div class="dashboard-grid">
+        <!-- SVG Canvas Card -->
+        <div class="glass-canvas">
+          <div class="canvas-status-bar">
+            <div class="live-indicator">
+              <span class="pulse-dot"></span>
+              <span>LIVE PIPELINE ACTIVE &bull; BullMQ + Redis Core</span>
+            </div>
+            <div
+              style="font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary)"
+            >
+              Workspace:
+              <span style="color: var(--apple-cyan); font-weight: 600">datasentinel-ws-01</span>
+            </div>
+          </div>
+
+          <svg class="liquid-stage" viewBox="0 0 880 640" id="flow-svg">
+            <defs>
+              <!-- Fluid Gradients -->
+              <linearGradient id="liquid-gradient-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#2997ff" />
+                <stop offset="100%" stop-color="#5de6de" />
+              </linearGradient>
+              <linearGradient id="liquid-gradient-red" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff453a" />
+                <stop offset="100%" stop-color="#ff9f0a" />
+              </linearGradient>
+              <linearGradient id="liquid-card-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgba(255, 255, 255, 0.08)" />
+                <stop offset="100%" stop-color="rgba(255, 255, 255, 0.01)" />
+              </linearGradient>
+            </defs>
+
+            <!-- Flow Connections / Glass Energy Streams -->
+            <path d="M 145 90 L 260 90" class="liquid-wire active-stream" id="path-0" />
+            <path
+              d="M 145 170 L 210 170 L 210 105 L 260 105"
+              class="liquid-wire"
+              id="path-webhook"
+            />
+            <path d="M 385 90 L 485 90" class="liquid-wire active-stream" id="path-1" />
+            <path d="M 545 145 L 545 220" class="liquid-wire active-stream" id="path-2" />
+            <path d="M 485 260 L 345 260" class="liquid-wire" id="path-db" />
+            <path d="M 605 260 L 710 260 L 710 335" class="liquid-wire alert-stream" id="path-3" />
+            <path d="M 710 415 L 710 480" class="liquid-wire active-stream" id="path-4" />
+            <path d="M 645 520 L 515 520" class="liquid-wire active-stream" id="path-5" />
+            <path d="M 385 520 L 255 520" class="liquid-wire active-stream" id="path-6" />
+            <path d="M 450 480 L 450 365 L 345 365" class="liquid-wire active-stream" id="path-7" />
+
+            <!-- INTERACTIVE NODES -->
+            <!-- 1. Source Connector -->
+            <g class="svg-node active" id="node-0" onclick="selectStep(0)">
+              <rect x="25" y="50" width="120" height="80" class="node-card" />
+              <text
+                x="38"
+                y="78"
+                fill="#2997ff"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                SOURCE INGESTION
+              </text>
+              <text x="38" y="98" fill="#ffffff" font-size="13.5" font-weight="600">
+                Postgres / CSV
+              </text>
+              <text x="38" y="116" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Read-Only Bounds
+              </text>
+            </g>
+
+            <!-- Inbound Pipeline Hook -->
+            <g class="svg-node" id="node-hook" onclick="selectStep(0)">
+              <rect x="25" y="145" width="120" height="60" class="node-card" />
+              <text
+                x="38"
+                y="168"
+                fill="#5de6de"
+                font-size="9.5"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                PIPELINE HOOK
+              </text>
+              <text x="38" y="186" fill="#ffffff" font-size="12" font-weight="600">
+                Airflow / dbt
+              </text>
+            </g>
+
+            <!-- 2. Redis & BullMQ Queue -->
+            <g class="svg-node" id="node-1" onclick="selectStep(1)">
+              <rect x="260" y="50" width="125" height="80" class="node-card" />
+              <text
+                x="273"
+                y="78"
+                fill="#2997ff"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                DURABLE QUEUE
+              </text>
+              <text x="273" y="98" fill="#ffffff" font-size="13.5" font-weight="600">
+                BullMQ / Redis
+              </text>
+              <text x="273" y="116" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Backoff &bull; Retries
+              </text>
+            </g>
+
+            <!-- 3. Profiler Worker -->
+            <g class="svg-node" id="node-2" onclick="selectStep(2)">
+              <rect x="485" y="50" width="120" height="80" class="node-card" />
+              <text
+                x="498"
+                y="78"
+                fill="#ff9f0a"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                DATA PROFILER
+              </text>
+              <text x="498" y="98" fill="#ffffff" font-size="13.5" font-weight="600">
+                Statistical Engine
+              </text>
+              <text x="498" y="116" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Nulls &bull; Schema Drift
+              </text>
+            </g>
+
+            <!-- 4. Quality Rules Engine -->
+            <g class="svg-node" id="node-3" onclick="selectStep(3)">
+              <rect x="485" y="220" width="120" height="80" class="node-card" />
+              <text
+                x="498"
+                y="248"
+                fill="#ff9f0a"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                RULES ENGINE
+              </text>
+              <text x="498" y="268" fill="#ffffff" font-size="13.5" font-weight="600">
+                Rule Assertions
+              </text>
+              <text x="498" y="286" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Freshness &bull; Limits
+              </text>
+            </g>
+
+            <!-- System PostgreSQL DB -->
+            <g class="svg-node" id="node-db">
+              <rect x="220" y="225" width="125" height="70" class="node-card" />
+              <text
+                x="233"
+                y="250"
+                fill="#a1a1a6"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                STATE OF RECORD
+              </text>
+              <text x="233" y="270" fill="#ffffff" font-size="13" font-weight="600">
+                PostgreSQL Store
+              </text>
+              <text x="233" y="285" fill="#6e6e73" font-size="10" font-family="monospace">
+                Prisma &bull; Audit Trail
+              </text>
+            </g>
+
+            <!-- 5. Incident Engine -->
+            <g class="svg-node" id="node-4" onclick="selectStep(4)">
+              <rect x="645" y="335" width="130" height="80" class="node-card" />
+              <text
+                x="658"
+                y="363"
+                fill="#ff453a"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                INCIDENT ENGINE
+              </text>
+              <text x="658" y="383" fill="#ffffff" font-size="13.5" font-weight="600">
+                Severity &amp; Alerts
+              </text>
+              <text x="658" y="401" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Dedupe &bull; Fingerprint
+              </text>
+            </g>
+
+            <!-- 6. AI Investigation -->
+            <g class="svg-node" id="node-5" onclick="selectStep(5)">
+              <rect x="645" y="480" width="130" height="80" class="node-card" />
+              <text
+                x="658"
+                y="508"
+                fill="#bf5af2"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                ADVISORY AI
+              </text>
+              <text x="658" y="528" fill="#ffffff" font-size="13.5" font-weight="600">
+                LLM Investigation
+              </text>
+              <text x="658" y="546" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Redacted Facts
+              </text>
+            </g>
+
+            <!-- 7. Human Approval Gate -->
+            <g class="svg-node" id="node-6" onclick="selectStep(6)">
+              <rect x="385" y="480" width="130" height="80" class="node-card" />
+              <text
+                x="398"
+                y="508"
+                fill="#30d158"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                APPROVAL GATE
+              </text>
+              <text x="398" y="528" fill="#ffffff" font-size="13.5" font-weight="600">
+                2-Person Rule
+              </text>
+              <text x="398" y="546" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                HMAC Hash Lock
+              </text>
+            </g>
+
+            <!-- 8. Outbound Notifications -->
+            <g class="svg-node" id="node-7" onclick="selectStep(7)">
+              <rect x="115" y="480" width="140" height="80" class="node-card" />
+              <text
+                x="128"
+                y="508"
+                fill="#2997ff"
+                font-size="10"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                DISPATCH CHANNELS
+              </text>
+              <text x="128" y="528" fill="#ffffff" font-size="13.5" font-weight="600">
+                Slack / Email / Hooks
+              </text>
+              <text x="128" y="546" fill="#a1a1a6" font-size="10.5" font-family="monospace">
+                Signed Webhooks
+              </text>
+            </g>
+
+            <!-- 9. Remediation Worker -->
+            <g class="svg-node" id="node-8" onclick="selectStep(8)">
+              <rect x="220" y="335" width="125" height="70" class="node-card" />
+              <text
+                x="233"
+                y="358"
+                fill="#30d158"
+                font-size="9.5"
+                font-weight="700"
+                letter-spacing="0.5"
+              >
+                RECOVERY ACTION
+              </text>
+              <text x="233" y="378" fill="#ffffff" font-size="13" font-weight="600">
+                n8n / Rerun Worker
+              </text>
+              <text x="233" y="393" fill="#6e6e73" font-size="10" font-family="monospace">
+                Idempotent Run
+              </text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Apple Glass Inspector Drawer -->
+        <div class="glass-inspector">
+          <div class="inspector-header-badge">
+            <span class="apple-badge badge-blue" id="insp-phase">PHASE 1: INGESTION</span>
+            <span class="step-counter" id="insp-step">Step 1 of 9</span>
+          </div>
+
+          <h2 class="inspector-title" id="insp-title">Data Ingestion &amp; Connection Bounds</h2>
+
+          <p class="inspector-body" id="insp-desc">
+            Monitored sources connect through restricted read-only adapters with enforced statement
+            timeouts, row caps (MAX 10,000 for profiling), and zero storage of raw customer data.
+          </p>
+
+          <div class="metric-grid">
+            <div class="metric-card">
+              <div class="metric-title">Security Tier</div>
+              <div class="metric-value" id="insp-m1">Read-Only (D-119)</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Execution Mode</div>
+              <div class="metric-value" id="insp-m2">Isolated Adapter</div>
+            </div>
+          </div>
+
+          <div class="glass-callout">
+            <strong>Architecture Decision:</strong>
+            <span id="insp-rationale"
+              >Monolithic ORMs risk destructive queries against customer databases. Connectors
+              enforce bounded SELECT queries and statement timeouts.</span
+            >
+          </div>
+
+          <div>
+            <div class="metric-title" style="margin-bottom: 8px">
+              Telemetry / Payload Inspection:
+            </div>
+            <pre class="code-glass" id="insp-code">
+// Bounded query configuration
+{
+  "sourceType": "postgres",
+  "readOnly": true,
+  "rowCap": 10000,
+  "statementTimeoutMs": 8000,
+  "encryptedSecretVersion": 1
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Liquid Step Ribbon -->
+      <div class="step-ribbon" id="step-ribbon">
+        <div class="ribbon-item active" onclick="selectStep(0)">
+          <span class="step-index-dot">1</span> Bounded Ingestion
+        </div>
+        <div class="ribbon-item" onclick="selectStep(1)">
+          <span class="step-index-dot">2</span> BullMQ Orchestration
+        </div>
+        <div class="ribbon-item" onclick="selectStep(2)">
+          <span class="step-index-dot">3</span> Statistical Profiling
+        </div>
+        <div class="ribbon-item" onclick="selectStep(3)">
+          <span class="step-index-dot">4</span> Rules Evaluation
+        </div>
+        <div class="ribbon-item" onclick="selectStep(4)">
+          <span class="step-index-dot">5</span> Incident Deduplication
+        </div>
+        <div class="ribbon-item" onclick="selectStep(5)">
+          <span class="step-index-dot">6</span> Advisory AI (Redacted)
+        </div>
+        <div class="ribbon-item" onclick="selectStep(6)">
+          <span class="step-index-dot">7</span> 2-Person Approval
+        </div>
+        <div class="ribbon-item" onclick="selectStep(7)">
+          <span class="step-index-dot">8</span> Signed Notifications
+        </div>
+        <div class="ribbon-item" onclick="selectStep(8)">
+          <span class="step-index-dot">9</span> Recovery Execution
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const steps = [
+        {
+          id: 0,
+          phase: 'PHASE 1: INGESTION',
+          badgeClass: 'badge-blue',
+          title: 'Data Ingestion & Connection Bounds',
+          desc: 'Monitored sources connect through restricted read-only adapters with enforced statement timeouts, row caps (MAX 10,000 for profiling), and zero storage of raw customer data.',
+          m1: 'Read-Only (D-119)',
+          m2: 'Isolated Adapter',
+          rationale:
+            'Monolithic ORMs risk destructive write queries against customer databases. Connectors enforce bounded SELECT queries only.',
+          nodeId: 'node-0',
+          activePaths: ['path-0'],
+          code: `// Bounded query configuration\n{\n  "sourceType": "postgres",\n  "readOnly": true,\n  "rowCap": 10000,\n  "statementTimeoutMs": 8000,\n  "encryptedSecretVersion": 1\n}`,
+        },
+        {
+          id: 1,
+          phase: 'PHASE 2: ORCHESTRATION',
+          badgeClass: 'badge-blue',
+          title: 'Durable Queueing (BullMQ + Redis)',
+          desc: 'All validation, profiling, and alert jobs are placed onto persistent Redis queues with exponential backoff, concurrency caps, and dead-lettering.',
+          m1: 'BullMQ Queue',
+          m2: 'Exponential Backoff',
+          rationale:
+            'HTTP requests must return within milliseconds. Long-running data evaluation runs asynchronously in worker processes that can scale independently.',
+          nodeId: 'node-1',
+          activePaths: ['path-1'],
+          code: `// BullMQ job definition\n{\n  "queue": "checks",\n  "jobId": "chk_9f81a7b",\n  "attempts": 3,\n  "backoff": { "type": "exponential", "delay": 2000 },\n  "workspaceId": "ws_01"\n}`,
+        },
+        {
+          id: 2,
+          phase: 'PHASE 3: PROFILING',
+          badgeClass: 'badge-yellow',
+          title: 'Statistical Profile Computation',
+          desc: 'Worker streams rows, calculating null ratios, distinct counts, min/max bounds, and schema drift against the last verified baseline.',
+          m1: 'Deterministic Math',
+          m2: 'Schema Fingerprint',
+          rationale:
+            'Profiling without storing customer records ensures compliance. Only summary statistics and hashes enter our PostgreSQL database.',
+          nodeId: 'node-2',
+          activePaths: ['path-2'],
+          code: `// Profile summary (no raw PII stored)\n{\n  "totalRows": 24000,\n  "nullPercentages": { "email": 0.0, "amount": 0.02 },\n  "schemaHash": "sha256_8e02b7a9...",\n  "driftDetected": false\n}`,
+        },
+        {
+          id: 3,
+          phase: 'PHASE 4: RULES ENGINE',
+          badgeClass: 'badge-yellow',
+          title: 'Deterministic Rule Evaluation',
+          desc: 'Validates dataset against active quality rules: freshness boundaries (e.g. max 60 min stale), null percentage ceilings, and row drop thresholds.',
+          m1: 'Strict Thresholds',
+          m2: 'Evidence Capture',
+          rationale:
+            'Rules must evaluate deterministically without hallucination. Every failure generates an immutable RFC 9457 Problem evidence record.',
+          nodeId: 'node-3',
+          activePaths: ['path-3', 'path-db'],
+          code: `// Rule assertion result\n{\n  "ruleId": "rule_freshness_01",\n  "passed": false,\n  "expected": "< 60m old",\n  "observed": "142m since last update",\n  "status": "violated"\n}`,
+        },
+        {
+          id: 4,
+          phase: 'PHASE 5: INCIDENTS',
+          badgeClass: 'badge-red',
+          title: 'Incident Deduplication & Fingerprinting',
+          desc: 'Violated rules are grouped by dataset and rule fingerprint to prevent alert storms. Existing open incidents receive new timeline events.',
+          m1: 'Alert Deduplication',
+          m2: 'Severity Matrix',
+          rationale:
+            'Alert fatigue kills operational response. DataSentinel fingerprints recurring check failures into a single ongoing incident thread.',
+          nodeId: 'node-4',
+          activePaths: ['path-4'],
+          code: `// Incident record creation\n{\n  "incidentId": "inc_77b02",\n  "fingerprint": "ws_01:source_pg:stale_orders",\n  "severity": "critical",\n  "status": "open",\n  "firstObservedAt": "2026-10-18T04:00:00Z"\n}`,
+        },
+        {
+          id: 5,
+          phase: 'PHASE 6: ADVISORY AI',
+          badgeClass: 'badge-purple',
+          title: 'Redacted AI Incident Investigation',
+          desc: 'Worker retrieves incident facts and workspace documentation. Redacts sensitive keys and feeds clean evidence to an LLM for advisory root-cause hypotheses.',
+          m1: 'Advisory Only (D-99)',
+          m2: 'Zero PII Shared',
+          rationale:
+            'AI should never automatically execute changes or read raw customer records. It acts as an investigator that suggests checks to human engineers.',
+          nodeId: 'node-5',
+          activePaths: ['path-5'],
+          code: `// Structured LLM response schema\n{\n  "confidence": 0.88,\n  "summary": "Upstream ETL batch failed due to schema column mismatch.",\n  "recommendedChecks": ["Check dbt run logs for job #1042"],\n  "limitations": "Logs past 4 hours truncated."\n}`,
+        },
+        {
+          id: 6,
+          phase: 'PHASE 7: APPROVAL',
+          badgeClass: 'badge-green',
+          title: 'Two-Person Approval Gate',
+          desc: 'Proposed remediations (reruns, webhook triggers, GitHub issue dispatch) are hashed and locked. The author cannot self-approve (D-116).',
+          m1: 'Dual Approver',
+          m2: 'HMAC Payload Hash',
+          rationale:
+            'Security boundary: Operational recoveries must be auditable. A second authorized engineer must review and click approve before execution starts.',
+          nodeId: 'node-6',
+          activePaths: ['path-6', 'path-7'],
+          code: `// Action proposal record\n{\n  "actionId": "act_88c",\n  "proposerUserId": "usr_ana",\n  "approvedByUserId": "usr_lena",\n  "payloadHash": "sha256_d41d8...",\n  "expiresAt": "2026-10-18T05:00:00Z"\n}`,
+        },
+        {
+          id: 7,
+          phase: 'PHASE 8: DISPATCH',
+          badgeClass: 'badge-blue',
+          title: 'Signed Outbound Notifications',
+          desc: 'Dispatches signed webhook payloads (HMAC-SHA256), email alerts, or Slack messages with deduplication tags and automatic retries.',
+          m1: 'HMAC Signed',
+          m2: 'Dead-Lettering',
+          rationale:
+            'Outbound webhooks prevent external spoofing by signing the body with a secret key shared exclusively with the receiving destination.',
+          nodeId: 'node-7',
+          activePaths: [],
+          code: `// Outbound Webhook Header\nPOST /webhook HTTP/1.1\nX-DataSentinel-Signature: sha256=9f8e02...\nX-DataSentinel-Event: incident.created\nContent-Type: application/json`,
+        },
+        {
+          id: 8,
+          phase: 'PHASE 9: EXECUTION',
+          badgeClass: 'badge-green',
+          title: 'Remediation Worker Execution',
+          desc: 'Upon valid dual approval, the worker executes the bounded action (e.g., triggers n8n pipeline or re-runs validation) and writes an immutable audit log.',
+          m1: 'Idempotent Worker',
+          m2: 'Audit Log Written',
+          rationale:
+            'Workers verify the payload hash matches the approval record at execution time, preventing any tampering while the action was pending in queue.',
+          nodeId: 'node-8',
+          activePaths: [],
+          code: `// Execution audit completion\n{\n  "actionId": "act_88c",\n  "executedAt": "2026-10-18T04:15:22Z",\n  "status": "success",\n  "auditEventLogged": true\n}`,
+        },
+      ];
+
+      let currentStepIndex = 0;
+      let isPlaying = true;
+      let playbackInterval = null;
+
+      function selectStep(index) {
+        currentStepIndex = index;
+        const step = steps[index];
+
+        // Update Inspector UI
+        const badge = document.getElementById('insp-phase');
+        badge.textContent = step.phase;
+        badge.className = 'apple-badge ' + step.badgeClass;
+
+        document.getElementById('insp-step').textContent = `Step ${index + 1} of ${steps.length}`;
+        document.getElementById('insp-title').textContent = step.title;
+        document.getElementById('insp-desc').textContent = step.desc;
+        document.getElementById('insp-m1').textContent = step.m1;
+        document.getElementById('insp-m2').textContent = step.m2;
+        document.getElementById('insp-rationale').textContent = step.rationale;
+        document.getElementById('insp-code').textContent = step.code;
+
+        // Update SVG Node Highlight
+        document.querySelectorAll('.svg-node').forEach((el) => el.classList.remove('active'));
+        const activeNode = document.getElementById(step.nodeId);
+        if (activeNode) activeNode.classList.add('active');
+
+        // Update SVG Stream Highlights
+        document.querySelectorAll('.liquid-wire').forEach((p) => {
+          if (!p.classList.contains('alert-stream')) {
+            p.classList.remove('active-stream');
+          }
+        });
+        step.activePaths.forEach((pathId) => {
+          const pathEl = document.getElementById(pathId);
+          if (pathEl) pathEl.classList.add('active-stream');
+        });
+
+        // Update Floating Ribbon
+        const ribbonItems = document.querySelectorAll('.ribbon-item');
+        ribbonItems.forEach((c, idx) => {
+          if (idx === index) {
+            c.classList.add('active');
+            c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          } else {
+            c.classList.remove('active');
+          }
+        });
+      }
+
+      function togglePlayback() {
+        const btn = document.getElementById('btn-toggle-play');
+        const icon = document.getElementById('play-icon');
+        const txt = document.getElementById('play-text');
+        if (isPlaying) {
+          clearInterval(playbackInterval);
+          isPlaying = false;
+          icon.innerHTML = '&#9658;';
+          txt.textContent = 'Resume Liquid Flow';
+          btn.classList.remove('active');
+        } else {
+          startPlayback();
+          isPlaying = true;
+          icon.innerHTML = '&Verbar;&Verbar;';
+          txt.textContent = 'Pause Liquid Flow';
+          btn.classList.add('active');
+        }
+      }
+
+      function startPlayback() {
+        playbackInterval = setInterval(() => {
+          currentStepIndex = (currentStepIndex + 1) % steps.length;
+          selectStep(currentStepIndex);
+        }, 4200);
+      }
+
+      // Initialize on load
+      selectStep(0);
+      startPlayback();
+    </script>
+  </body>
+</html>

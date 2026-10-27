@@ -1,0 +1,1984 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataSentinel — 3D Code Flow Architecture & Execution Tracer</title>
+    <!-- Three.js + OrbitControls + TWEEN via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <style>
+      :root {
+        --bg: #07090e;
+        --glass-surface: rgba(255, 255, 255, 0.04);
+        --glass-surface-elevated: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-border-highlight: rgba(255, 255, 255, 0.28);
+        --text: #f5f5f7;
+        --text-secondary: #a1a1a6;
+        --text-tertiary: #6e6e73;
+        --tier-cyan: #5de6de;
+        --tier-purple: #bf5af2;
+        --tier-blue: #2997ff;
+        --tier-amber: #ff9f0a;
+        --tier-green: #30d158;
+        --tier-red: #ff453a;
+        --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, sans-serif;
+        --font-mono: 'SF Mono', 'Fira Code', ui-monospace, Menlo, Monaco, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-system);
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+        user-select: none;
+      }
+
+      /* WebGL 3D Canvas */
+      #webgl-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        outline: none;
+      }
+
+      /* Ambient Liquid Orbs behind canvas */
+      .ambient-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .liquid-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(120px);
+        opacity: 0.28;
+        animation: floatOrb 25s infinite alternate ease-in-out;
+      }
+
+      .orb-1 {
+        width: 700px;
+        height: 700px;
+        background: radial-gradient(circle, #2997ff 0%, rgba(41, 151, 255, 0) 70%);
+        top: -200px;
+        left: 15%;
+      }
+
+      .orb-2 {
+        width: 650px;
+        height: 650px;
+        background: radial-gradient(circle, #bf5af2 0%, rgba(191, 90, 242, 0) 70%);
+        bottom: -150px;
+        right: 10%;
+        animation-duration: 30s;
+        animation-delay: -7s;
+      }
+
+      .orb-3 {
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, #30d158 0%, rgba(48, 209, 88, 0) 70%);
+        top: 35%;
+        left: 45%;
+        animation-duration: 22s;
+        opacity: 0.18;
+      }
+
+      @keyframes floatOrb {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(50px, -40px) scale(1.1); }
+        100% { transform: translate(-40px, 40px) scale(0.95); }
+      }
+
+      /* UI Overlay Container */
+      .ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px 24px;
+      }
+
+      .ui-layer > * {
+        pointer-events: auto;
+      }
+
+      /* Glass Header */
+      header {
+        background: var(--glass-surface);
+        backdrop-filter: blur(36px) saturate(190%);
+        -webkit-backdrop-filter: blur(36px) saturate(190%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 20px;
+        padding: 14px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+
+      .brand-group {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #2997ff 0%, #bf5af2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 16px rgba(41, 151, 255, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+      }
+
+      .brand-icon svg {
+        width: 22px;
+        height: 22px;
+        fill: #fff;
+      }
+
+      .brand-title {
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.4px;
+        background: linear-gradient(180deg, #ffffff 0%, #d1d1d6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .brand-sub {
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .badge-count {
+        background: rgba(41, 151, 255, 0.2);
+        color: var(--tier-cyan);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 1px 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(93, 230, 222, 0.3);
+      }
+
+      /* Header Center: Module Filters & Search */
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .search-box {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .search-box input {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--glass-border);
+        border-radius: 980px;
+        padding: 8px 16px 8px 36px;
+        color: #fff;
+        font-family: var(--font-system);
+        font-size: 12.5px;
+        width: 230px;
+        outline: none;
+        transition: all 0.25s ease;
+      }
+
+      .search-box input:focus {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: var(--tier-blue);
+        box-shadow: 0 0 12px rgba(41, 151, 255, 0.35);
+        width: 280px;
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        width: 14px;
+        height: 14px;
+        fill: var(--text-secondary);
+        pointer-events: none;
+      }
+
+      /* View Mode Pills */
+      .pill-group {
+        display: flex;
+        background: rgba(0, 0, 0, 0.35);
+        padding: 3px;
+        border-radius: 980px;
+        border: 1px solid var(--glass-border);
+      }
+
+      .view-pill {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 6px 12px;
+        font-size: 11.5px;
+        font-weight: 500;
+        border-radius: 980px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .view-pill:hover {
+        color: #fff;
+      }
+
+      .view-pill.active {
+        background: var(--glass-surface-elevated);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      }
+
+      /* Tier Legend floating panel on top left */
+      .tier-legend {
+        position: absolute;
+        top: 92px;
+        left: 24px;
+        background: var(--glass-surface);
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        max-width: 220px;
+      }
+
+      .legend-title {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 700;
+        color: var(--text-tertiary);
+        margin-bottom: 2px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: color 0.2s ease;
+      }
+
+      .legend-item:hover {
+        color: #fff;
+      }
+
+      .legend-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        box-shadow: 0 0 8px currentColor;
+      }
+
+      /* Filter Ribbon below header */
+      .module-ribbon {
+        position: absolute;
+        top: 92px;
+        left: 260px;
+        right: 420px;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: none;
+      }
+
+      .module-ribbon::-webkit-scrollbar {
+        display: none;
+      }
+
+      .module-pill {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--glass-border);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 5px 12px;
+        border-radius: 980px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+      }
+
+      .module-pill:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+
+      .module-pill.active {
+        background: linear-gradient(135deg, rgba(41, 151, 255, 0.35), rgba(93, 230, 222, 0.2));
+        border-color: var(--tier-cyan);
+        color: #fff;
+        box-shadow: 0 0 12px rgba(41, 151, 255, 0.3);
+      }
+
+      /* Right Inspector Drawer */
+      .inspector-drawer {
+        position: absolute;
+        top: 92px;
+        right: 24px;
+        bottom: 120px;
+        width: 380px;
+        background: var(--glass-surface);
+        backdrop-filter: blur(40px) saturate(200%);
+        -webkit-backdrop-filter: blur(40px) saturate(200%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 24px;
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .drawer-header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 14px;
+      }
+
+      .route-badge-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .method-tag {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
+      }
+
+      .method-POST { background: rgba(48, 209, 88, 0.2); color: #30d158; border: 1px solid rgba(48, 209, 88, 0.4); }
+      .method-GET { background: rgba(41, 151, 255, 0.2); color: #2997ff; border: 1px solid rgba(41, 151, 255, 0.4); }
+      .method-PATCH { background: rgba(255, 159, 10, 0.2); color: #ff9f0a; border: 1px solid rgba(255, 159, 10, 0.4); }
+      .method-DELETE { background: rgba(255, 69, 58, 0.2); color: #ff453a; border: 1px solid rgba(255, 69, 58, 0.4); }
+
+      .route-path {
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #fff;
+        word-break: break-all;
+      }
+
+      .route-desc {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+      }
+
+      /* Inspector Sections */
+      .section-label {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        font-weight: 700;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .trace-flow-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .flow-card {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .flow-card:hover {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .flow-card.active-step {
+        border-color: var(--tier-cyan);
+        background: rgba(93, 230, 222, 0.08);
+        box-shadow: 0 0 14px rgba(93, 230, 222, 0.25);
+      }
+
+      .flow-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .flow-step-num {
+        font-size: 9.5px;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        color: var(--tier-cyan);
+      }
+
+      .flow-tier-name {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+      }
+
+      .flow-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .flow-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-family: var(--font-mono);
+      }
+
+      /* Code Snippet Box */
+      .code-preview {
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: #d1d1d6;
+        line-height: 1.55;
+        overflow-x: auto;
+        max-height: 140px;
+      }
+
+      .code-preview .keyword { color: #bf5af2; }
+      .code-preview .fn { color: #5de6de; }
+      .code-preview .str { color: #30d158; }
+      .code-preview .comment { color: #6e6e73; }
+
+      /* Bottom Debugger Ribbon */
+      .debugger-bar {
+        background: var(--glass-surface);
+        backdrop-filter: blur(36px) saturate(190%);
+        -webkit-backdrop-filter: blur(36px) saturate(190%);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        border-radius: 20px;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      }
+
+      .playback-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .btn-glass {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--glass-border);
+        border-top: 1px solid var(--glass-border-highlight);
+        color: #fff;
+        font-family: var(--font-system);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 7px 16px;
+        border-radius: 980px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+      }
+
+      .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.35);
+        transform: translateY(-1px);
+      }
+
+      .btn-glass.primary {
+        background: linear-gradient(135deg, rgba(41, 151, 255, 0.4) 0%, rgba(93, 230, 222, 0.25) 100%);
+        border-color: var(--tier-cyan);
+        box-shadow: 0 0 16px rgba(41, 151, 255, 0.35);
+      }
+
+      /* Step Progress Pipeline */
+      .step-pipeline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        max-width: 680px;
+        margin: 0 24px;
+      }
+
+      .pipeline-node {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 980px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--glass-border);
+        font-size: 11px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.25s ease;
+        white-space: nowrap;
+      }
+
+      .pipeline-node.active {
+        background: rgba(93, 230, 222, 0.18);
+        border-color: var(--tier-cyan);
+        color: #fff;
+        box-shadow: 0 0 12px rgba(93, 230, 222, 0.35);
+      }
+
+      .pipeline-arrow {
+        color: var(--text-tertiary);
+        font-size: 10px;
+      }
+
+      /* Tooltip 3D hover badge */
+      #node-tooltip {
+        position: absolute;
+        display: none;
+        background: rgba(7, 9, 14, 0.85);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border-highlight);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 11.5px;
+        pointer-events: none;
+        z-index: 100;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+        max-width: 260px;
+      }
+
+      #node-tooltip .tt-title {
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 2px;
+      }
+
+      #node-tooltip .tt-sub {
+        font-size: 10.5px;
+        color: var(--tier-cyan);
+        font-family: var(--font-mono);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Ambient Glass Orbs -->
+    <div class="ambient-canvas">
+      <div class="liquid-orb orb-1"></div>
+      <div class="liquid-orb orb-2"></div>
+      <div class="liquid-orb orb-3"></div>
+    </div>
+
+    <!-- 3D ThreeJS Container -->
+    <div id="webgl-canvas"></div>
+
+    <!-- 3D Floating Node Tooltip -->
+    <div id="node-tooltip">
+      <div class="tt-title" id="tt-title">Node Title</div>
+      <div class="tt-sub" id="tt-sub">Node Subtitle</div>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-layer">
+      <!-- Header -->
+      <header>
+        <div class="brand-group">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">DataSentinel 3D Execution Tracer</div>
+            <div class="brand-sub">
+              <span>Modular Monolith &bull; NestJS + BullMQ + Prisma</span>
+              <span class="badge-count" id="active-route-count">54 Routes Mapped</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & View Mode -->
+        <div class="header-controls">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" id="route-search" placeholder="Search routes, controllers, DB..." oninput="handleSearch(this.value)" />
+          </div>
+
+          <div class="pill-group">
+            <button class="view-pill active" onclick="setViewMode('isometric', event)">Isometric 3D</button>
+            <button class="view-pill" onclick="setViewMode('topdown', event)">Top-Down</button>
+            <button class="view-pill" onclick="setViewMode('elevation', event)">Elevation</button>
+            <button class="view-pill" onclick="toggleAutoTour()" id="btn-tour">Cinematic Tour</button>
+          </div>
+
+          <button class="btn-glass" onclick="resetCamera()">Reset View</button>
+        </div>
+      </header>
+
+      <!-- Tier Legend (Left) -->
+      <div class="tier-legend">
+        <div class="legend-title">6 Execution Tiers</div>
+        <div class="legend-item" onclick="focusTier(5)">
+          <span class="legend-dot" style="color: var(--tier-cyan); background: var(--tier-cyan);"></span>
+          <span>Tier 5: HTTP Inbound</span>
+        </div>
+        <div class="legend-item" onclick="focusTier(4)">
+          <span class="legend-dot" style="color: var(--tier-purple); background: var(--tier-purple);"></span>
+          <span>Tier 4: Guards & Security</span>
+        </div>
+        <div class="legend-item" onclick="focusTier(3)">
+          <span class="legend-dot" style="color: var(--tier-blue); background: var(--tier-blue);"></span>
+          <span>Tier 3: Controller Handlers</span>
+        </div>
+        <div class="legend-item" onclick="focusTier(2)">
+          <span class="legend-dot" style="color: var(--tier-amber); background: var(--tier-amber);"></span>
+          <span>Tier 2: Services & Audit</span>
+        </div>
+        <div class="legend-item" onclick="focusTier(1)">
+          <span class="legend-dot" style="color: var(--tier-green); background: var(--tier-green);"></span>
+          <span>Tier 1: Prisma DB & Queues</span>
+        </div>
+        <div class="legend-item" onclick="focusTier(0)">
+          <span class="legend-dot" style="color: var(--tier-red); background: var(--tier-red);"></span>
+          <span>Tier 0: Worker Tasks</span>
+        </div>
+      </div>
+
+      <!-- Module Ribbon (Top Filter) -->
+      <div class="module-ribbon" id="module-ribbon">
+        <button class="module-pill active" onclick="filterByModule('ALL', event)">All Modules (54)</button>
+        <button class="module-pill" onclick="filterByModule('auth', event)">Auth & Me (4)</button>
+        <button class="module-pill" onclick="filterByModule('workspaces', event)">Workspaces (9)</button>
+        <button class="module-pill" onclick="filterByModule('sources', event)">Sources & Data (11)</button>
+        <button class="module-pill" onclick="filterByModule('rules', event)">Rules & Checks (5)</button>
+        <button class="module-pill" onclick="filterByModule('schedules', event)">Schedules (4)</button>
+        <button class="module-pill" onclick="filterByModule('pipelines', event)">Pipelines (6)</button>
+        <button class="module-pill" onclick="filterByModule('uploads', event)">Uploads & S3 (4)</button>
+        <button class="module-pill" onclick="filterByModule('incidents', event)">Incidents & Actions (5)</button>
+        <button class="module-pill" onclick="filterByModule('ai', event)">AI & Docs (4)</button>
+        <button class="module-pill" onclick="filterByModule('ops', event)">Ops & Health (3)</button>
+      </div>
+
+      <!-- Right Inspector Drawer -->
+      <div class="inspector-drawer" id="inspector-drawer">
+        <div class="drawer-header">
+          <div class="route-badge-row">
+            <span class="method-tag method-POST" id="drawer-method">POST</span>
+            <span style="font-size: 11px; color: var(--text-tertiary);" id="drawer-controller">workspaces.controller.ts</span>
+          </div>
+          <div class="route-path" id="drawer-path">/api/workspaces</div>
+          <div class="route-desc" id="drawer-desc">Creates a new workspace tenant, establishes owner membership, and appends an immutable audit event.</div>
+        </div>
+
+        <div>
+          <div class="section-label">
+            <span>Execution Call Stack</span>
+            <span id="drawer-step-count" style="color: var(--tier-cyan);">6 Steps</span>
+          </div>
+          <div class="trace-flow-list" id="drawer-flow-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Code Implementation Preview</div>
+          <div class="code-preview" id="drawer-code">
+            // Select a route to inspect execution logic
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Data Sentinel Architecture Notes</div>
+          <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;" id="drawer-notes">
+            • Enforces <strong>OriginGuard</strong> against CSWSH attacks (D-08)<br/>
+            • <strong>SessionGuard</strong> validates HMAC SHA-256 session token<br/>
+            • <strong>Prisma</strong> runs in atomic transaction with <code>recordAudit()</code> (D-33)
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Debugger Ribbon -->
+      <div class="debugger-bar">
+        <div class="playback-group">
+          <button class="btn-glass primary" id="btn-play" onclick="toggleTracePlayback()">
+            <span id="play-btn-icon">▶</span>
+            <span id="play-btn-text">Animate Flow</span>
+          </button>
+          <button class="btn-glass" onclick="stepPrevious()">◄ Prev</button>
+          <button class="btn-glass" onclick="stepNext()">Next ►</button>
+        </div>
+
+        <!-- 6 Step Indicator -->
+        <div class="step-pipeline" id="step-pipeline">
+          <div class="pipeline-node active" id="pipe-step-0" onclick="jumpToStep(0)">1. Ingress Route</div>
+          <span class="pipeline-arrow">➔</span>
+          <div class="pipeline-node" id="pipe-step-1" onclick="jumpToStep(1)">2. Guards</div>
+          <span class="pipeline-arrow">➔</span>
+          <div class="pipeline-node" id="pipe-step-2" onclick="jumpToStep(2)">3. Controller</div>
+          <span class="pipeline-arrow">➔</span>
+          <div class="pipeline-node" id="pipe-step-3" onclick="jumpToStep(3)">4. Services & Audit</div>
+          <span class="pipeline-arrow">➔</span>
+          <div class="pipeline-node" id="pipe-step-4" onclick="jumpToStep(4)">5. DB & Queues</div>
+          <span class="pipeline-arrow">➔</span>
+          <div class="pipeline-node" id="pipe-step-5" onclick="jumpToStep(5)">6. Worker Execution</div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-glass" onclick="focusCurrentRouteFlow()">Focus Flow</button>
+          <button class="btn-glass" onclick="isolateActiveCluster()">Isolate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DataSentinel 3D Architecture Engine Script -->
+    <script>
+      // ==========================================
+      // 1. COMPREHENSIVE ROUTE & FLOW DATABASE
+      // ==========================================
+      const ROUTES_DATA = [
+        // --- 1. WORKSPACES MODULE ---
+        {
+          id: 'route-ws-create',
+          module: 'workspaces',
+          method: 'POST',
+          path: '/api/workspaces',
+          title: 'Create Workspace Tenant',
+          controller: 'WorkspacesController.create',
+          file: 'apps/api/src/workspaces/workspaces.controller.ts:64',
+          desc: 'Creates a new workspace tenant, establishes owner membership, and appends an immutable audit event.',
+          notes: '• Enforces OriginGuard against foreign origins (D-08)\n• SessionGuard validates current authenticated user\n• Atomic Prisma transaction creates Workspace, Membership (owner), and AuditEvent (D-33)',
+          code: `@Post()\nasync create(@Body() req: CreateWorkspaceRequest, @CurrentPrincipal() user: Principal, @CurrentRequest() meta: RequestMeta) {\n  return this.prisma.$transaction(async (tx) => {\n    const ws = await tx.workspace.create({ data: { name: req.name, slug: req.slug } });\n    await tx.membership.create({ data: { workspaceId: ws.id, userId: user.id, role: 'owner' } });\n    await recordAudit(tx, { action: 'workspace.create', actor: { type: 'user', id: user.id }, request: meta });\n    return ws;\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/workspaces', detail: 'Incoming JSON payload with name and unique workspace slug' },
+            { tier: 4, tierName: 'Guards', name: 'OriginGuard + SessionGuard', detail: 'Verifies allowed web origins and HMAC session cookie token' },
+            { tier: 3, tierName: 'Controller', name: 'WorkspacesController.create()', detail: 'Validates CreateWorkspaceRequest Zod schema and extracts Principal' },
+            { tier: 2, tierName: 'Services & Audit', name: 'recordAudit(tx, entry)', detail: 'Audit logging in audit.ts records user ID, client IP, and requestId' },
+            { tier: 1, tierName: 'Persistence', name: 'Prisma tx.workspace.create()', detail: 'Inserts row into workspaces and memberships tables via Postgres' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Synchronous API Response', detail: 'Returns 201 Created with Workspace object to client' }
+          ]
+        },
+        {
+          id: 'route-ws-get',
+          module: 'workspaces',
+          method: 'GET',
+          path: '/api/workspaces/:workspaceId',
+          title: 'Get Workspace Details',
+          controller: 'WorkspacesController.get',
+          file: 'apps/api/src/workspaces/workspaces.controller.ts:125',
+          desc: 'Retrieves metadata and operational settings for a specified workspace.',
+          notes: '• Requires WorkspaceGuard membership with viewer role or higher (D-02)\n• Reads from Postgres read replica when configured',
+          code: `@Get(':workspaceId')\nasync get(@CurrentWorkspace() ws: WorkspaceAccess) {\n  return this.prisma.workspace.findUniqueOrThrow({\n    where: { id: ws.workspaceId }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'GET /api/workspaces/:workspaceId', detail: 'Workspace UUID in path parameter' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(viewer+)', detail: 'Validates caller belongs to workspace tenant' },
+            { tier: 3, tierName: 'Controller', name: 'WorkspacesController.get()', detail: 'Passes validated workspace context to query' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Access Telemetry', detail: 'Logs workspace read telemetry to Pino logger' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.workspace.findUnique()', detail: 'Queries workspace record with settings and member count' },
+            { tier: 0, tierName: 'Worker Execution', name: 'HTTP 200 OK Response', detail: 'Returns JSON serialization of Workspace' }
+          ]
+        },
+        {
+          id: 'route-ws-patch',
+          module: 'workspaces',
+          method: 'PATCH',
+          path: '/api/workspaces/:workspaceId',
+          title: 'Update Workspace Settings',
+          controller: 'WorkspacesController.update',
+          file: 'apps/api/src/workspaces/workspaces.controller.ts:141',
+          desc: 'Updates workspace display name, timezone, or AI investigation enablement.',
+          notes: '• Requires admin or owner role\n• Emits audit event with redacted diff',
+          code: `@Patch(':workspaceId')\n@RequireRole('admin')\nasync update(@Body() req: UpdateWorkspaceRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  return this.prisma.workspace.update({ where: { id: ws.workspaceId }, data: req });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'PATCH /api/workspaces/:workspaceId', detail: 'Patch payload with partial settings' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard + RequireRole(admin)', detail: 'Restricts configuration changes to admins' },
+            { tier: 3, tierName: 'Controller', name: 'WorkspacesController.update()', detail: 'Sanitizes input parameters' },
+            { tier: 2, tierName: 'Services & Audit', name: 'recordAudit(action: workspace.update)', detail: 'Appends settings change diff to audit trail' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.workspace.update()', detail: 'Persists changes to PostgreSQL database' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Config Cache Invalidation', detail: 'Broadcasts updated workspace settings' }
+          ]
+        },
+        {
+          id: 'route-ws-invitations-post',
+          module: 'workspaces',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/invitations',
+          title: 'Invite Team Member',
+          controller: 'InvitationsController.invite',
+          file: 'apps/api/src/workspaces/invitations.controller.ts:74',
+          desc: 'Generates a secure cryptographically signed invite token and queues invitation delivery.',
+          notes: '• Token is hashed with SHA-256 before storage; raw secret only in email\n• Dispatches background delivery job via BullMQ',
+          code: `@Post()\n@RequireRole('admin')\nasync invite(@Body() req: InviteRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  const token = randomBytes(32).toString('hex');\n  const invitation = await this.prisma.invitation.create({\n    data: { workspaceId: ws.workspaceId, email: req.email, role: req.role, tokenHash: hashToken(token) }\n  });\n  await this.deliveryQueue.add('send-email', { invitationId: invitation.id, token });\n  return { id: invitation.id, email: req.email };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/workspaces/:id/invitations', detail: 'Email address and target role (viewer, engineer, admin)' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(admin+)', detail: 'Admin permission required to invite users' },
+            { tier: 3, tierName: 'Controller', name: 'InvitationsController.invite()', detail: 'Generates secure 256-bit entropy token' },
+            { tier: 2, tierName: 'Services & Audit', name: 'hashToken() + recordAudit()', detail: 'Stores SHA-256 hash in DB; audit event created' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'prisma.invitation.create() + BullMQ', detail: 'Inserts invitation row; enqueues send-email job' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: DeliveryService', detail: 'Worker sends invite email with token link via SMTP' }
+          ]
+        },
+
+        // --- 2. AUTH & IDENTITY MODULE ---
+        {
+          id: 'route-auth-register',
+          module: 'auth',
+          method: 'POST',
+          path: '/api/auth/register',
+          title: 'User Registration & Seed',
+          controller: 'AuthController.register',
+          file: 'apps/api/src/auth/auth.controller.ts:45',
+          desc: 'Registers a new user account with argon2 password hashing and establishes initial session.',
+          notes: '• Rate-limited via Redis sliding window (RedisRateLimiter)\n• Generates cryptographically secure session cookie',
+          code: `@Post('register')\nasync register(@Body() req: RegisterRequest) {\n  const user = await this.authService.register(req.email, req.password, req.displayName);\n  const session = await this.authService.createSession(user.id);\n  return { user, token: session.token };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/auth/register', detail: 'Credentials payload (email, password, displayName)' },
+            { tier: 4, tierName: 'Guards', name: 'OriginGuard + RedisRateLimiter', detail: 'Rate limits registration attempts per IP (D-25)' },
+            { tier: 3, tierName: 'Controller', name: 'AuthController.register()', detail: 'Invokes AuthService registration pipeline' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Argon2id Hash + recordAudit', detail: 'Hashes password and logs auth.register event' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.user.create() + session.create()', detail: 'Persists user row and new active session token hash' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Set-Cookie Session Dispatch', detail: 'Returns HTTP 201 with Set-Cookie: ds_session' }
+          ]
+        },
+        {
+          id: 'route-auth-login',
+          module: 'auth',
+          method: 'POST',
+          path: '/api/auth/login',
+          title: 'User Authentication / Login',
+          controller: 'AuthController.login',
+          file: 'apps/api/src/auth/auth.controller.ts:75',
+          desc: 'Authenticates credentials against password hash, creates session, and records telemetry.',
+          notes: '• Prevents timing attacks with constant-time verify\n• Rate-limited to 5 failures per minute per IP',
+          code: `@Post('login')\nasync login(@Body() req: LoginRequest, @Req() rawReq: Request) {\n  const session = await this.authService.login(req.email, req.password, rawReq.headers['user-agent']);\n  return { sessionToken: session.token };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/auth/login', detail: 'Email & plaintext password via HTTPS' },
+            { tier: 4, tierName: 'Guards', name: 'OriginGuard + RedisRateLimiter', detail: 'Checks IP rate limits against Redis store' },
+            { tier: 3, tierName: 'Controller', name: 'AuthController.login()', detail: 'Calls AuthService.verifyCredentials()' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Argon2.verify() + recordAudit', detail: 'Verifies hash; logs successful login' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.session.create()', detail: 'Inserts session record with 30-day expiration' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Cookie & Response Emission', detail: 'Sets HttpOnly, Secure, SameSite=Lax cookie' }
+          ]
+        },
+        {
+          id: 'route-auth-me',
+          module: 'auth',
+          method: 'GET',
+          path: '/api/me',
+          title: 'Current User Identity & Workspaces',
+          controller: 'MeController.me',
+          file: 'apps/api/src/auth/me.controller.ts:18',
+          desc: 'Returns current authenticated user profile, active session, and accessible workspace tenants.',
+          notes: '• Uses SessionGuard to decode session token from cookie\n• Queries joined memberships with roles',
+          code: `@Get()\nasync me(@CurrentPrincipal() user: Principal) {\n  return this.prisma.user.findUniqueOrThrow({\n    where: { id: user.id },\n    include: { memberships: { include: { workspace: true } } }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'GET /api/me', detail: 'Cookie session bearer' },
+            { tier: 4, tierName: 'Guards', name: 'SessionGuard', detail: 'Extracts session token from cookie, looks up in Redis/DB' },
+            { tier: 3, tierName: 'Controller', name: 'MeController.me()', detail: 'Injects CurrentPrincipal' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Session Touch & Activity Logger', detail: 'Updates session lastUsedAt timestamp' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.user.findUnique(include memberships)', detail: 'Postgres join on users, memberships, workspaces' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Client Identity Payload', detail: 'HTTP 200 with User profile and workspace array' }
+          ]
+        },
+
+        // --- 3. SOURCES & DATASETS MODULE ---
+        {
+          id: 'route-sources-create',
+          module: 'sources',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/sources',
+          title: 'Register Data Source (Postgres/CSV/S3)',
+          controller: 'SourcesController.create',
+          file: 'apps/api/src/sources/sources.controller.ts:180',
+          desc: 'Creates a source connection. Encrypts credentials with AES-256-GCM via keyRing before storage.',
+          notes: '• Credentials ciphertext is sealed with keyRing (D-15)\n• Plaintext password never touches the database',
+          code: `@Post('sources')\n@RequireRole('engineer')\nasync create(@Body() req: CreateSourceRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  const ciphertext = await this.sourceSecurity.sealSecret(req.credentials);\n  const source = await this.prisma.source.create({\n    data: { workspaceId: ws.workspaceId, name: req.name, type: req.type, ciphertext }\n  });\n  await recordAudit(this.prisma, { action: 'source.create', target: { type: 'source', id: source.id } });\n  return source;\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/workspaces/:id/sources', detail: 'Connection params: host, port, dbname, user, password' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Verifies caller has engineer or higher role' },
+            { tier: 3, tierName: 'Controller', name: 'SourcesController.create()', detail: 'Validates source syntax and network policy' },
+            { tier: 2, tierName: 'Services & Audit', name: 'keyRing.sealSecret() + recordAudit', detail: 'AES-256-GCM authenticated encryption; audit logged' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.source.create()', detail: 'Saves source row with ciphertext into Postgres' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Source Created', detail: 'Returns sanitized source summary without credentials' }
+          ]
+        },
+        {
+          id: 'route-sources-test',
+          module: 'sources',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/sources/:sourceId/connection-tests',
+          title: 'Test Live Source Connection',
+          controller: 'ConnectionTestsController.testConnection',
+          file: 'apps/api/src/sources/connection-tests.controller.ts:61',
+          desc: 'Dispatches an asynchronous connection test job to the worker queue to test network reachability and credentials.',
+          notes: '• Uses BullSourceJobs with Redis queue (D-71)\n• Worker verifies read-only Postgres permissions',
+          code: `@Post('sources/:sourceId/connection-tests')\n@RequireRole('engineer')\nasync testConnection(@Param('sourceId') sourceId: string, @CurrentWorkspace() ws: WorkspaceAccess) {\n  const job = await this.sourceJobs.enqueueConnectionTest({\n    workspaceId: ws.workspaceId, sourceId\n  });\n  return { jobId: job.id, status: 'queued' };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /sources/:id/connection-tests', detail: 'Triggers diagnostic connection test' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Ensures engineer authorization' },
+            { tier: 3, tierName: 'Controller', name: 'ConnectionTestsController.testConnection()', detail: 'Extracts source and workspace UUIDs' },
+            { tier: 2, tierName: 'Services & Audit', name: 'BullSourceJobs Producer', detail: 'Formats BullMQ job payload with max retries 1' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'BullMQ: SOURCE_QUEUE (Redis)', detail: 'Pushes TEST_CONNECTION_JOB to Redis stream' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: SourceQueueService', detail: 'Worker unseals credentials, dials database, tests read-only query' }
+          ]
+        },
+        {
+          id: 'route-sources-discover',
+          module: 'sources',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/sources/:sourceId/discoveries',
+          title: 'Trigger Automated Schema Discovery',
+          controller: 'ConnectionTestsController.discoverSchema',
+          file: 'apps/api/src/sources/connection-tests.controller.ts:87',
+          desc: 'Inspects remote database tables, columns, data types, and primary keys to populate datasets.',
+          notes: '• Queries information_schema and pg_catalog with strict read-only lock\n• Stores discovered schema catalog in Postgres',
+          code: `@Post('sources/:sourceId/discoveries')\nasync discoverSchema(@Param('sourceId') sourceId: string) {\n  return this.sourceJobs.enqueueDiscovery({ sourceId });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /sources/:id/discoveries', detail: 'Triggers schema discovery request' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Engineer authorization required' },
+            { tier: 3, tierName: 'Controller', name: 'ConnectionTestsController.discoverSchema()', detail: 'Initiates schema scan pipeline' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Discovery Job Dispatcher', detail: 'Encodes discovery options and timeout' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'BullMQ: DISCOVERY_JOB', detail: 'Queued into Redis for asynchronous worker pickup' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: DiscoveryWorker', detail: 'Executes catalog discovery and upserts datasets/columns' }
+          ]
+        },
+        {
+          id: 'route-datasets-profile',
+          module: 'sources',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/datasets/:datasetId/profile-runs',
+          title: 'Run Data Profiler & Stats',
+          controller: 'ConnectionTestsController.runProfile',
+          file: 'apps/api/src/sources/connection-tests.controller.ts:120',
+          desc: 'Computes column statistics (null counts, min/max, distinct values, distributions) on dataset.',
+          notes: '• Uses reservoir sampling or hyperloglog for huge datasets\n• Records profileRun history row',
+          code: `@Post('datasets/:datasetId/profile-runs')\nasync runProfile(@Param('datasetId') datasetId: string) {\n  return this.sourceJobs.enqueueProfile({ datasetId });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /datasets/:id/profile-runs', detail: 'Triggers automated column profiling' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Tenant validation' },
+            { tier: 3, tierName: 'Controller', name: 'ConnectionTestsController.runProfile()', detail: 'Constructs profile job definition' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Profile Rate Controller', detail: 'Ensures no concurrent profile is already running' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'BullMQ: PROFILE_JOB', detail: 'Pushes profile job into Redis worker queue' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: ProfilerEngine', detail: 'Queries column metrics and saves to prisma.profileRun' }
+          ]
+        },
+
+        // --- 4. RULES & CHECKS MODULE ---
+        {
+          id: 'route-rules-create',
+          module: 'rules',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/datasets/:datasetId/rules',
+          title: 'Create Data Quality Rule',
+          controller: 'RulesController.create',
+          file: 'apps/api/src/rules/rules.controller.ts:155',
+          desc: 'Defines data quality validation rules (null checks, range, regex pattern, unique constraints, SQL assertions).',
+          notes: '• Validates rule configuration contract schema (D-40)\n• Emits rule.create audit event',
+          code: `@Post('datasets/:datasetId/rules')\n@RequireRole('engineer')\nasync create(@Body() req: CreateRuleRequest, @Param('datasetId') datasetId: string) {\n  validateRuleContract(req.type, req.params);\n  return this.prisma.rule.create({\n    data: { datasetId, name: req.name, type: req.type, params: req.params }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /datasets/:id/rules', detail: 'Rule JSON: name, type (not_null, bounds, custom_sql), params' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Authorizes rule definition' },
+            { tier: 3, tierName: 'Controller', name: 'RulesController.create()', detail: 'Executes Zod validation for rule type params' },
+            { tier: 2, tierName: 'Services & Audit', name: 'validateRuleContract() + recordAudit', detail: 'Validates bounds/regex; records audit entry' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.rule.create()', detail: 'Inserts rule definition into Postgres' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Rule Registered', detail: 'Returns newly created Rule object' }
+          ]
+        },
+        {
+          id: 'route-rules-run',
+          module: 'rules',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/rules/:ruleId/runs',
+          title: 'Execute Rule Check Immediately',
+          controller: 'RulesController.triggerRun',
+          file: 'apps/api/src/rules/rules.controller.ts:336',
+          desc: 'Triggers manual evaluation of a data quality rule. Dispatches execution to worker and tracks check run.',
+          notes: '• Evaluates rule query against source connector in isolated sandbox\n• Raises incident automatically on check failure (D-80)',
+          code: `@Post('rules/:ruleId/runs')\nasync triggerRun(@Param('ruleId') ruleId: string) {\n  const checkRun = await this.prisma.checkRun.create({ data: { ruleId, status: 'queued' } });\n  await this.sourceJobs.enqueueCheck({ checkRunId: checkRun.id });\n  return checkRun;\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /rules/:id/runs', detail: 'Manual on-demand check execution trigger' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Engineer authorization required' },
+            { tier: 3, tierName: 'Controller', name: 'RulesController.triggerRun()', detail: 'Instantiates checkRun tracking state' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Check Runner Dispatcher', detail: 'Prepares check job payload and telemetry' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'prisma.checkRun.create() + BullMQ', detail: 'Creates checkRun row in DB; queues CHECK_JOB in Redis' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: CheckService', detail: 'Worker executes SQL assertion, evaluates threshold, triggers incident if violated' }
+          ]
+        },
+
+        // --- 5. SCHEDULES MODULE ---
+        {
+          id: 'route-schedules-create',
+          module: 'schedules',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/datasets/:datasetId/schedules',
+          title: 'Configure Cron Quality Schedule',
+          controller: 'SchedulesController.create',
+          file: 'apps/api/src/schedules/schedules.controller.ts:120',
+          desc: 'Creates a recurring execution schedule using standard 5-part cron expressions evaluated in workspace timezone.',
+          notes: '• Uses cron-parser to compute next run timestamps (D-70)\n• Scheduler worker polls pending dispatches',
+          code: `@Post('datasets/:datasetId/schedules')\nasync create(@Body() req: CreateScheduleRequest, @Param('datasetId') datasetId: string) {\n  const interval = parseCronExpression(req.cron, { tz: req.timezone });\n  return this.prisma.schedule.create({\n    data: { datasetId, cron: req.cron, nextRunAt: interval.next().toDate() }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /datasets/:id/schedules', detail: 'Schedule definition with cron string and timezone' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Permission check' },
+            { tier: 3, tierName: 'Controller', name: 'SchedulesController.create()', detail: 'Validates cron expression syntax' },
+            { tier: 2, tierName: 'Services & Audit', name: 'cronParser.parse() + recordAudit', detail: 'Calculates UTC nextRunAt; appends audit entry' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.schedule.create()', detail: 'Saves schedule with nextRunAt in PostgreSQL' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: SchedulerService', detail: 'Worker scheduler ticker monitors nextRunAt and dispatches runs' }
+          ]
+        },
+
+        // --- 6. PIPELINES & EVENTS MODULE ---
+        {
+          id: 'route-pipeline-events',
+          module: 'pipelines',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/pipeline-events',
+          title: 'Ingest External Pipeline Event (Webhook/CLI)',
+          controller: 'PipelineEventsController.recordEvent',
+          file: 'apps/api/src/pipeline-runs/pipeline-events.controller.ts:103',
+          desc: 'Receives CI/CD or Airflow/dbt webhook telemetry to correlate pipeline deployments with quality runs.',
+          notes: '• Authenticated via integrationToken (Bearer ds_it_...)\n• Upserts pipelineRun state and triggers correlated check runs',
+          code: `@Post('pipeline-events')\n@UseGuards(IntegrationTokenGuard)\nasync recordEvent(@Body() req: PipelineEventRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  return this.prisma.pipelineRun.upsert({\n    where: { externalRunId: req.runId },\n    create: { workspaceId: ws.workspaceId, externalRunId: req.runId, status: req.status },\n    update: { status: req.status, completedAt: req.completedAt }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /api/.../pipeline-events', detail: 'Inbound Airflow / dbt / GitHub Actions webhook' },
+            { tier: 4, tierName: 'Guards', name: 'IntegrationTokenGuard', detail: 'Validates workspace integration token hash in Authorization header' },
+            { tier: 3, tierName: 'Controller', name: 'PipelineEventsController.recordEvent()', detail: 'Parses pipeline run state and metadata' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Correlation Engine', detail: 'Matches pipeline execution with active dataset checks' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.pipelineRun.upsert()', detail: 'Atomic upsert on externalRunId in Postgres' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Trigger Dependent Checks', detail: 'Dispatches check runs if pipeline event is COMPLETED' }
+          ]
+        },
+        {
+          id: 'route-tokens-create',
+          module: 'pipelines',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/integration-tokens',
+          title: 'Generate Integration Token',
+          controller: 'IntegrationTokensController.create',
+          file: 'apps/api/src/pipeline-runs/integration-tokens.controller.ts:77',
+          desc: 'Issues a programmatic integration secret token for ingestion hooks and CI runners.',
+          notes: '• Generates token prefixed with ds_it_\n• Only SHA-256 hash is saved in database; plaintext shown once',
+          code: `@Post('integration-tokens')\n@RequireRole('admin')\nasync create(@Body() req: CreateTokenRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  const secret = 'ds_it_' + randomBytes(24).toString('base64url');\n  await this.prisma.integrationToken.create({\n    data: { workspaceId: ws.workspaceId, name: req.name, tokenHash: hashToken(secret) }\n  });\n  return { secret };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /integration-tokens', detail: 'Token label and expiration settings' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(admin+)', detail: 'Only workspace admins can create tokens' },
+            { tier: 3, tierName: 'Controller', name: 'IntegrationTokensController.create()', detail: 'Generates cryptographically random token string' },
+            { tier: 2, tierName: 'Services & Audit', name: 'hashToken() + recordAudit()', detail: 'Hashes token secret; audits creation event' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.integrationToken.create()', detail: 'Stores hashed token in PostgreSQL' },
+            { tier: 0, tierName: 'Worker Execution', name: 'One-Time Secret Return', detail: 'Returns plaintext secret once to client' }
+          ]
+        },
+
+        // --- 7. UPLOADS & OBJECT STORAGE MODULE ---
+        {
+          id: 'route-uploads-initiate',
+          module: 'uploads',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/sources/:sourceId/uploads',
+          title: 'Initiate S3 Direct Multipart Upload',
+          controller: 'UploadsController.initiateUpload',
+          file: 'apps/api/src/uploads/uploads.controller.ts:127',
+          desc: 'Generates presigned S3 PUT URL for direct browser-to-bucket CSV dataset upload.',
+          notes: '• Uses AWS S3 SDK with short-lived STS credentials (D-115)\n• Prevents large files from stressing API server RAM',
+          code: `@Post('sources/:sourceId/uploads')\nasync initiateUpload(@Body() req: InitiateUploadRequest, @Param('sourceId') sourceId: string) {\n  const key = \`uploads/\${ws.id}/\${randomUUID()}.csv\`;\n  const signedUrl = await this.uploadStorage.createSignedUrl(key, req.contentType);\n  const upload = await this.prisma.upload.create({ data: { sourceId, key, status: 'pending' } });\n  return { uploadId: upload.id, uploadUrl: signedUrl };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /sources/:id/uploads', detail: 'File metadata (filename, byte size, MIME type)' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Validates engineer permission' },
+            { tier: 3, tierName: 'Controller', name: 'UploadsController.initiateUpload()', detail: 'Constructs partitioned S3 storage key' },
+            { tier: 2, tierName: 'Services & Audit', name: 'S3UploadStorage.createSignedUrl()', detail: 'Signs HMAC AWS S3 Presigned URL (15 min validity)' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.upload.create()', detail: 'Creates pending upload record in Postgres' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Direct S3 Presigned URL', detail: 'Returns presigned uploadUrl for direct PUT' }
+          ]
+        },
+        {
+          id: 'route-uploads-complete',
+          module: 'uploads',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/uploads/:uploadId/complete',
+          title: 'Complete Upload & Trigger Parser',
+          controller: 'UploadsController.completeUpload',
+          file: 'apps/api/src/uploads/uploads.controller.ts:222',
+          desc: 'Marks upload finished in S3 and enqueues streaming CSV parser worker job.',
+          notes: '• Upload queue runs BullUploadQueue in apps/worker\n• Stream parses CSV rows and infers schema types',
+          code: `@Post('uploads/:uploadId/complete')\nasync completeUpload(@Param('uploadId') uploadId: string) {\n  const upload = await this.prisma.upload.update({\n    where: { id: uploadId }, data: { status: 'uploaded' }\n  });\n  await this.uploadQueue.enqueueParse({ uploadId });\n  return { status: 'queued_for_processing' };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /uploads/:id/complete', detail: 'Client signals S3 transfer complete' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Tenant verification' },
+            { tier: 3, tierName: 'Controller', name: 'UploadsController.completeUpload()', detail: 'Verifies upload record status' },
+            { tier: 2, tierName: 'Services & Audit', name: 'BullUploadQueue Dispatcher', detail: 'Enqueues PARSE_UPLOAD_JOB with backoff retries' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'prisma.upload.update() + BullMQ', detail: 'Updates status to uploaded; pushes to Redis queue' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: UploadQueueService', detail: 'Worker streams file from S3, parses CSV rows, builds dataset schema' }
+          ]
+        },
+
+        // --- 8. INCIDENTS & REMEDIATION ACTIONS MODULE ---
+        {
+          id: 'route-incidents-resolve',
+          module: 'incidents',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/incidents/:incidentId/resolve',
+          title: 'Resolve Data Incident',
+          controller: 'IncidentsController.resolve',
+          file: 'apps/api/src/incidents/incidents.controller.ts:88',
+          desc: 'Marks an active quality anomaly or incident resolved with engineer resolution notes.',
+          notes: '• Enforces audit logging with resolution summary\n• Clears active alert banner',
+          code: `@Post('incidents/:incidentId/resolve')\n@RequireRole('engineer')\nasync resolve(@Param('incidentId') id: string, @Body() req: ResolveRequest, @CurrentPrincipal() user: Principal) {\n  return this.prisma.incident.update({\n    where: { id },\n    data: { status: 'resolved', resolvedAt: new Date(), resolverId: user.id, resolutionNotes: req.notes }\n  });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /incidents/:id/resolve', detail: 'Resolution notes and root cause payload' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Requires engineer authorization' },
+            { tier: 3, tierName: 'Controller', name: 'IncidentsController.resolve()', detail: 'Validates incident state is unresolved' },
+            { tier: 2, tierName: 'Services & Audit', name: 'recordAudit(incident.resolve)', detail: 'Audit trail records resolution metadata and engineer ID' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.incident.update()', detail: 'Updates incident record status in PostgreSQL' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Notification Broadcast', detail: 'Emits incident resolved webhook to Slack/PagerDuty' }
+          ]
+        },
+        {
+          id: 'route-actions-approve',
+          module: 'incidents',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/actions/:actionId/approve',
+          title: 'Approve Remediation Action (Two-Person Rule)',
+          controller: 'ActionsController.approve',
+          file: 'apps/api/src/actions/actions.controller.ts:112',
+          desc: 'Approves quarantine or backfill remediation action. Enforces two-person rule (proposer cannot approve).',
+          notes: '• Decision D-116: requireSecondApprover prevents self-approval\n• Enqueues action execution to BullMQ worker',
+          code: `@Post('actions/:actionId/approve')\n@RequireRole('admin')\nasync approve(@Param('actionId') id: string, @CurrentPrincipal() user: Principal) {\n  const action = await this.prisma.action.findUniqueOrThrow({ where: { id } });\n  if (action.proposerId === user.id) throw new ProblemException('Second approver required');\n  await this.prisma.action.update({ where: { id }, data: { status: 'approved', approverId: user.id } });\n  await this.actionQueue.enqueueDelivery({ actionId: id });\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /actions/:id/approve', detail: 'Approver confirmation request' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(admin+) + TwoPersonRule', detail: 'Enforces proposer !== approver constraint' },
+            { tier: 3, tierName: 'Controller', name: 'ActionsController.approve()', detail: 'Verifies action status is pending_approval' },
+            { tier: 2, tierName: 'Services & Audit', name: 'recordAudit(action.approve)', detail: 'Appends compliance audit event' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'prisma.action.update() + BullMQ', detail: 'Updates action state; enqueues ACTION_DELIVERY job' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: DeliveryService', detail: 'Executes approved remediation script/webhook dispatch' }
+          ]
+        },
+
+        // --- 9. AI INVESTIGATIONS & VECTOR DOCS MODULE ---
+        {
+          id: 'route-ai-investigate',
+          module: 'ai',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/investigations',
+          title: 'Trigger Gemini AI Incident Investigation',
+          controller: 'InvestigationsController.trigger',
+          file: 'apps/api/src/investigations/investigations.controller.ts:45',
+          desc: 'Uses Google Gemini LLM to synthesize check failure context, related schema changes, and past incidents to draft root-cause analysis.',
+          notes: '• Only available if workspace opted into aiEnabled (D-99)\n• Worker uses geminiProvider with strict rate limiting and token budget',
+          code: `@Post('investigations')\nasync trigger(@Body() req: InvestigateRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  if (!ws.aiEnabled) throw new ProblemException('AI investigations disabled for workspace');\n  const inv = await this.prisma.investigation.create({ data: { incidentId: req.incidentId, status: 'processing' } });\n  await this.investigationQueue.enqueue({ investigationId: inv.id });\n  return inv;\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /investigations', detail: 'Target incidentId payload' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard + AiOptInGuard', detail: 'Checks aiEnabled boolean on workspace' },
+            { tier: 3, tierName: 'Controller', name: 'InvestigationsController.trigger()', detail: 'Creates tracking record' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Investigation Dispatcher', detail: 'Packages incident context for LLM prompt' },
+            { tier: 1, tierName: 'Persistence & Queues', name: 'prisma.investigation.create() + BullMQ', detail: 'Creates investigation row; pushes to Redis queue' },
+            { tier: 0, tierName: 'Worker Execution', name: 'apps/worker: InvestigationService', detail: 'Invokes Gemini model, generates root-cause diagnosis, writes back summary' }
+          ]
+        },
+        {
+          id: 'route-docs-create',
+          module: 'ai',
+          method: 'POST',
+          path: '/api/workspaces/:workspaceId/documents',
+          title: 'Upload RAG Knowledge Document',
+          controller: 'DocumentsController.create',
+          file: 'apps/api/src/documents/documents.controller.ts:42',
+          desc: 'Ingests Runbooks and SLA specs into chunks with embeddings for context-augmented AI investigations.',
+          notes: '• Chunks text into 500-token segments using chunkDocument()\n• Stores in documentChunk table with vector index',
+          code: `@Post('documents')\nasync create(@Body() req: CreateDocumentRequest, @CurrentWorkspace() ws: WorkspaceAccess) {\n  const doc = await this.prisma.document.create({ data: { workspaceId: ws.workspaceId, name: req.name } });\n  const chunks = chunkDocument(req.content);\n  await this.prisma.documentChunk.createMany({\n    data: chunks.map(c => ({ documentId: doc.id, content: c.text, chunkIndex: c.index }))\n  });\n  return doc;\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'POST /documents', detail: 'Document markdown or plain text with title' },
+            { tier: 4, tierName: 'Guards', name: 'WorkspaceGuard(engineer+)', detail: 'Permission check' },
+            { tier: 3, tierName: 'Controller', name: 'DocumentsController.create()', detail: 'Executes document ingestion pipeline' },
+            { tier: 2, tierName: 'Services & Audit', name: 'chunkDocument() + Hash', detail: 'Breaks text into semantic chunks; hashes content' },
+            { tier: 1, tierName: 'Persistence', name: 'prisma.documentChunk.createMany()', detail: 'Stores vectorized chunks in PostgreSQL' },
+            { tier: 0, tierName: 'Worker Execution', name: 'Knowledge Graph Indexed', detail: 'Ready for similarity retrieval during AI investigations' }
+          ]
+        },
+
+        // --- 10. SYSTEM OPS & DIAGNOSTICS MODULE ---
+        {
+          id: 'route-ops-health',
+          module: 'ops',
+          method: 'GET',
+          path: '/health',
+          title: 'System Health & Dependency Probes',
+          controller: 'HealthController.check',
+          file: 'apps/api/src/health/health.controller.ts:25',
+          desc: 'Liveness and readiness probe for Kubernetes/Render. Tests PostgreSQL ping and Redis ping.',
+          notes: '• Unauthenticated public endpoint for container orchestrators\n• Returns 200 OK or 503 Service Unavailable',
+          code: `@Get('health')\nasync check() {\n  const checks = await this.dependencyChecks.check();\n  const healthy = Object.values(checks).every(c => c.status === 'ok');\n  if (!healthy) throw new HttpException({ status: 'error', checks }, HttpStatus.SERVICE_UNAVAILABLE);\n  return { status: 'ok', checks, uptime: process.uptime() };\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'GET /health', detail: 'Health check probe' },
+            { tier: 4, tierName: 'Guards', name: 'Public (Bypass Guards)', detail: 'Allows container orchestrator polling without auth' },
+            { tier: 3, tierName: 'Controller', name: 'HealthController.check()', detail: 'Runs parallel dependency checks' },
+            { tier: 2, tierName: 'Services & Audit', name: 'DEPENDENCY_CHECKS.check()', detail: 'Runs SELECT 1 on Postgres and PING on Redis' },
+            { tier: 1, tierName: 'Persistence & Infra', name: 'Postgres & Redis Live Pings', detail: 'Low-latency ping verification' },
+            { tier: 0, tierName: 'Worker Execution', name: 'HTTP 200 / 503 Probe Status', detail: 'Returns JSON dependency breakdown' }
+          ]
+        },
+        {
+          id: 'route-ops-metrics',
+          module: 'ops',
+          method: 'GET',
+          path: '/api/ops/metrics',
+          title: 'Prometheus Operational Metrics',
+          controller: 'MetricsController.get',
+          file: 'apps/api/src/ops/metrics.controller.ts:33',
+          desc: 'Exposes Prometheus metrics counters (HTTP requests, latencies, worker queue depths, active DB connections).',
+          notes: '• Requires SessionGuard and owner role\n• Formatted in OpenMetrics standard format',
+          code: `@Get('metrics')\n@RequireRole('owner')\nasync get() {\n  return this.metricsService.getMetricsAsText();\n}`,
+          steps: [
+            { tier: 5, tierName: 'HTTP Ingress', name: 'GET /api/ops/metrics', detail: 'Scrape request from Prometheus or admin' },
+            { tier: 4, tierName: 'Guards', name: 'SessionGuard + RequireRole(owner)', detail: 'Strict owner-only access protection' },
+            { tier: 3, tierName: 'Controller', name: 'MetricsController.get()', detail: 'Gathers operational metrics' },
+            { tier: 2, tierName: 'Services & Audit', name: 'Prometheus Registry Aggregator', detail: 'Aggregates counters, histograms, and gauges' },
+            { tier: 1, tierName: 'Persistence', name: 'In-Memory Metric Counters', detail: 'Reads process memory and queue depths' },
+            { tier: 0, tierName: 'Worker Execution', name: 'OpenMetrics String Output', detail: 'text/plain Prometheus payload' }
+          ]
+        }
+      ];
+
+      // ==========================================
+      // 2. THREE.JS 3D SCENE SETUP & ARCHITECTURE
+      // ==========================================
+      const container = document.getElementById('webgl-canvas');
+      let scene, camera, renderer, controls;
+      let raycaster, mouse;
+      let activeRoute = ROUTES_DATA[0];
+      let activeStepIndex = 0;
+      let isPlayingFlow = false;
+      let playInterval = null;
+      let isTourActive = false;
+      let tourIndex = 0;
+
+      // Tier Y coordinates in 3D Space
+      const TIER_HEIGHTS = {
+        5: 220,   // Tier 5: HTTP Inbound
+        4: 135,   // Tier 4: Guards
+        3: 45,    // Tier 3: Controllers
+        2: -45,   // Tier 2: Services & Audit
+        1: -135,  // Tier 1: Prisma DB & Queues
+        0: -220   // Tier 0: Worker Tasks
+      };
+
+      const TIER_COLORS = {
+        5: 0x5de6de, // Cyan
+        4: 0xbf5af2, // Purple
+        3: 0x2997ff, // Blue
+        2: 0xff9f0a, // Amber
+        1: 0x30d158, // Green
+        0: 0xff453a  // Coral Red
+      };
+
+      // 3D Objects Pools
+      const tierPlates = [];
+      const nodeMeshes = [];
+      const activeLinkCurves = [];
+      const particleSystems = [];
+      let activeFlowGroup = new THREE.Group();
+
+      function initThree() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x07090e, 0.00085);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 4000);
+        camera.position.set(450, 260, 560);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // OrbitControls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.maxPolarAngle = Math.PI / 2 + 0.08;
+        controls.minDistance = 150;
+        controls.maxDistance = 1800;
+        controls.target.set(0, 0, 0);
+
+        // Raycaster for hover/click interaction
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(300, 600, 400);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const pointLight1 = new THREE.PointLight(0x2997ff, 2.5, 900);
+        pointLight1.position.set(-200, 100, 200);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x5de6de, 2.2, 900);
+        pointLight2.position.set(200, 200, -200);
+        scene.add(pointLight2);
+
+        scene.add(activeFlowGroup);
+
+        // Build 3D Tier Floating Glass Plates
+        createTierPlates();
+
+        // Build 3D Route Nodes
+        createRouteGraphNodes();
+
+        // Render initial active route flow
+        highlightRouteFlow(activeRoute);
+
+        // Event Listeners
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('click', onCanvasClick);
+
+        // Start Animation Loop
+        animate();
+      }
+
+      // ==========================================
+      // 3. BUILD 3D TIER GLASS PLATFORMS
+      // ==========================================
+      function createTierPlates() {
+        const plateGeo = new THREE.BoxGeometry(680, 4, 460);
+        const borderGeo = new THREE.EdgesGeometry(plateGeo);
+
+        const tierNames = {
+          5: 'TIER 5 — HTTP INBOUND INGRESS',
+          4: 'TIER 4 — GUARDS & ACCESS SECURITY',
+          3: 'TIER 3 — CONTROLLERS & ENDPOINTS',
+          2: 'TIER 2 — SERVICES, CRYPTO & AUDIT',
+          1: 'TIER 1 — PRISMA DB & BULLMQ QUEUES',
+          0: 'TIER 0 — WORKER PROCESSORS & DISPATCH'
+        };
+
+        for (let tier = 5; tier >= 0; tier--) {
+          const y = TIER_HEIGHTS[tier];
+          const color = TIER_COLORS[tier];
+
+          // Frosted Glass Material
+          const glassMat = new THREE.MeshPhysicalMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.08,
+            roughness: 0.25,
+            metalness: 0.1,
+            transmission: 0.6,
+            depthWrite: false
+          });
+
+          const plateMesh = new THREE.Mesh(plateGeo, glassMat);
+          plateMesh.position.set(0, y, 0);
+          scene.add(plateMesh);
+          tierPlates.push(plateMesh);
+
+          // Glowing wireframe rim
+          const rimMat = new THREE.LineBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.45
+          });
+          const rimLine = new THREE.LineSegments(borderGeo, rimMat);
+          rimLine.position.set(0, y, 0);
+          scene.add(rimLine);
+
+          // Subtle grid helper on the glass surface
+          const grid = new THREE.GridHelper(660, 22, color, 0xffffff);
+          grid.position.set(0, y + 2, 0);
+          grid.material.opacity = 0.09;
+          grid.material.transparent = true;
+          scene.add(grid);
+
+          // 3D Sprite Label for the tier
+          createTierLabel(tierNames[tier], color, -330, y + 16, 220);
+        }
+      }
+
+      function createTierLabel(text, colorHex, x, y, z) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(7, 9, 14, 0.7)';
+        if (ctx.roundRect) {
+          ctx.roundRect(0, 0, 512, 64, 12);
+        } else {
+          ctx.rect(0, 0, 512, 64);
+        }
+        ctx.fill();
+        ctx.strokeStyle = '#' + colorHex.toString(16).padStart(6, '0');
+        ctx.lineWidth = 4;
+        if (ctx.roundRect) {
+          ctx.roundRect(0, 0, 512, 64, 12);
+        } else {
+          ctx.rect(0, 0, 512, 64);
+        }
+        ctx.stroke();
+
+        ctx.font = 'bold 24px -apple-system, Inter, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, 24, 40);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.85 });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.position.set(x + 120, y, z);
+        sprite.scale.set(160, 20, 1);
+        scene.add(sprite);
+      }
+
+      // ==========================================
+      // 4. GENERATE 3D ROUTE NODES & MESHES
+      // ==========================================
+      function createRouteGraphNodes() {
+        const count = ROUTES_DATA.length;
+        const cols = 6;
+        const spacingX = 90;
+        const spacingZ = 80;
+
+        ROUTES_DATA.forEach((route, index) => {
+          const col = index % cols;
+          const row = Math.floor(index / cols);
+          const x = (col - (cols - 1) / 2) * spacingX;
+          const z = (row - 1.2) * spacingZ;
+
+          // Compute 3D positions for all 6 steps of this route
+          route.stepPositions = [];
+
+          for (let stepIdx = 0; stepIdx < route.steps.length; stepIdx++) {
+            const step = route.steps[stepIdx];
+            const tierY = TIER_HEIGHTS[step.tier];
+            // Slight jitter or vertical alignment for distinct steps
+            const stepX = x + (stepIdx % 2 === 0 ? 0 : 8);
+            const stepZ = z + (stepIdx * 10 - 25);
+            route.stepPositions.push(new THREE.Vector3(stepX, tierY, stepZ));
+          }
+
+          // Top Inbound Node (Tier 5 Mesh)
+          const topPos = route.stepPositions[0];
+          const nodeGeo = new THREE.BoxGeometry(32, 14, 24);
+          const nodeMat = new THREE.MeshStandardMaterial({
+            color: TIER_COLORS[5],
+            emissive: TIER_COLORS[5],
+            emissiveIntensity: 0.35,
+            roughness: 0.2,
+            metalness: 0.7
+          });
+
+          const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+          nodeMesh.position.copy(topPos);
+          nodeMesh.userData = { route, isRouteNode: true, stepIndex: 0 };
+          scene.add(nodeMesh);
+          nodeMeshes.push(nodeMesh);
+
+          // Pulsing halo ring around node
+          const ringGeo = new THREE.RingGeometry(18, 22, 24);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: TIER_COLORS[5],
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+          });
+          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.rotation.x = Math.PI / 2;
+          ringMesh.position.set(topPos.x, topPos.y - 6, topPos.z);
+          scene.add(ringMesh);
+          nodeMesh.userData.ring = ringMesh;
+        });
+      }
+
+      // ==========================================
+      // 5. HIGHLIGHT ACTIVE 3D EXECUTION FLOW
+      // ==========================================
+      function highlightRouteFlow(route) {
+        activeRoute = route;
+
+        // Clear previous active flow visualization
+        while (activeFlowGroup.children.length > 0) {
+          const obj = activeFlowGroup.children[0];
+          activeFlowGroup.remove(obj);
+          if (obj.geometry) obj.geometry.dispose();
+        }
+        activeLinkCurves.length = 0;
+
+        // Dim or brighten top nodes
+        nodeMeshes.forEach(mesh => {
+          if (mesh.userData.route.id === route.id) {
+            mesh.material.emissiveIntensity = 1.0;
+            mesh.scale.set(1.2, 1.2, 1.2);
+            if (mesh.userData.ring) mesh.userData.ring.visible = true;
+          } else {
+            mesh.material.emissiveIntensity = 0.15;
+            mesh.scale.set(0.9, 0.9, 0.9);
+            if (mesh.userData.ring) mesh.userData.ring.visible = false;
+          }
+        });
+
+        // Build 3D Stream Curves connecting Tier 5 -> Tier 4 -> Tier 3 -> Tier 2 -> Tier 1 -> Tier 0
+        const points = route.stepPositions;
+        for (let i = 0; i < points.length - 1; i++) {
+          const p1 = points[i];
+          const p2 = points[i + 1];
+
+          // Create a smooth organic 3D S-curve
+          const midY = (p1.y + p2.y) / 2;
+          const cp1 = new THREE.Vector3(p1.x, midY + 15, p1.z);
+          const cp2 = new THREE.Vector3(p2.x, midY - 15, p2.z);
+          const curve = new THREE.CubicBezierCurve3(p1, cp1, cp2, p2);
+
+          activeLinkCurves.push(curve);
+
+          // Tube Geometry for neon energy stream
+          const tubeGeo = new THREE.TubeGeometry(curve, 32, 2.4, 8, false);
+          const tubeMat = new THREE.MeshStandardMaterial({
+            color: TIER_COLORS[route.steps[i + 1].tier],
+            emissive: TIER_COLORS[route.steps[i + 1].tier],
+            emissiveIntensity: 0.7,
+            roughness: 0.1,
+            metalness: 0.8,
+            transparent: true,
+            opacity: 0.85
+          });
+          const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+          activeFlowGroup.add(tubeMesh);
+
+          // Add Intermediate Tier Node Marker
+          const stepMarkerGeo = new THREE.SphereGeometry(6.5, 16, 16);
+          const stepMarkerMat = new THREE.MeshStandardMaterial({
+            color: TIER_COLORS[route.steps[i + 1].tier],
+            emissive: TIER_COLORS[route.steps[i + 1].tier],
+            emissiveIntensity: 0.9
+          });
+          const stepMarker = new THREE.Mesh(stepMarkerGeo, stepMarkerMat);
+          stepMarker.position.copy(p2);
+          activeFlowGroup.add(stepMarker);
+        }
+
+        // Spawn Traveling Flow Particle Sphere
+        createFlowParticlePulse();
+
+        // Update UI Inspector Drawer
+        updateInspectorUI(route);
+      }
+
+      let flowParticle = null;
+      let particleCurveIndex = 0;
+      let particleT = 0;
+
+      function createFlowParticlePulse() {
+        if (!flowParticle) {
+          const partGeo = new THREE.SphereGeometry(6, 16, 16);
+          const partMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.95
+          });
+          flowParticle = new THREE.Mesh(partGeo, partMat);
+          scene.add(flowParticle);
+        }
+        flowParticle.visible = true;
+        particleCurveIndex = 0;
+        particleT = 0;
+      }
+
+      // ==========================================
+      // 6. UI INSPECTOR & STEP TRACKING
+      // ==========================================
+      function updateInspectorUI(route) {
+        document.getElementById('drawer-method').textContent = route.method;
+        document.getElementById('drawer-method').className = `method-tag method-${route.method}`;
+        document.getElementById('drawer-controller').textContent = route.file.split('/').pop();
+        document.getElementById('drawer-path').textContent = route.path;
+        document.getElementById('drawer-desc').textContent = route.desc;
+        document.getElementById('drawer-step-count').textContent = `${route.steps.length} Steps Trace`;
+
+        // Render Step Flow Cards
+        const flowListContainer = document.getElementById('drawer-flow-list');
+        flowListContainer.innerHTML = '';
+
+        route.steps.forEach((step, idx) => {
+          const card = document.createElement('div');
+          card.className = `flow-card ${idx === activeStepIndex ? 'active-step' : ''}`;
+          card.onclick = () => jumpToStep(idx);
+          card.innerHTML = `
+            <div class="flow-card-head">
+              <span class="flow-step-num">STEP 0${idx + 1}</span>
+              <span class="flow-tier-name" style="color: #${TIER_COLORS[step.tier].toString(16).padStart(6, '0')}">${step.tierName}</span>
+            </div>
+            <div class="flow-title">${step.name}</div>
+            <div class="flow-sub">${step.detail}</div>
+          `;
+          flowListContainer.appendChild(card);
+        });
+
+        // Code Preview Snippet
+        const codeBox = document.getElementById('drawer-code');
+        codeBox.innerHTML = syntaxHighlight(route.code);
+
+        // Architecture Notes
+        document.getElementById('drawer-notes').innerHTML = route.notes.replace(/\n/g, '<br/>');
+
+        // Update Bottom Pipeline Node Highlights
+        for (let i = 0; i < 6; i++) {
+          const pipeElem = document.getElementById(`pipe-step-${i}`);
+          if (pipeElem) {
+            if (i === activeStepIndex) {
+              pipeElem.classList.add('active');
+            } else {
+              pipeElem.classList.remove('active');
+            }
+          }
+        }
+      }
+
+      function syntaxHighlight(codeStr) {
+        return codeStr
+          .replace(/(@\w+)/g, '<span class="keyword">$1</span>')
+          .replace(/(async|return|const|await|throw|new|if)/g, '<span class="keyword">$1</span>')
+          .replace(/('.*?'|".*?")/g, '<span class="str">$1</span>')
+          .replace(/(\b\w+\b)(?=\()/g, '<span class="fn">$1</span>');
+      }
+
+      // ==========================================
+      // 7. STEP-THROUGH DEBUGGER CONTROLS
+      // ==========================================
+      function jumpToStep(stepIdx) {
+        activeStepIndex = stepIdx;
+        updateInspectorUI(activeRoute);
+
+        // Fly Camera smoothly to target step 3D location
+        if (activeRoute.stepPositions && activeRoute.stepPositions[stepIdx]) {
+          const targetPos = activeRoute.stepPositions[stepIdx];
+          flyCameraTo(targetPos.x + 100, targetPos.y + 40, targetPos.z + 160, targetPos);
+        }
+      }
+
+      function stepNext() {
+        if (activeStepIndex < activeRoute.steps.length - 1) {
+          jumpToStep(activeStepIndex + 1);
+        } else {
+          jumpToStep(0);
+        }
+      }
+
+      function stepPrevious() {
+        if (activeStepIndex > 0) {
+          jumpToStep(activeStepIndex - 1);
+        } else {
+          jumpToStep(activeRoute.steps.length - 1);
+        }
+      }
+
+      function toggleTracePlayback() {
+        isPlayingFlow = !isPlayingFlow;
+        const btnIcon = document.getElementById('play-btn-icon');
+        const btnText = document.getElementById('play-btn-text');
+
+        if (isPlayingFlow) {
+          btnIcon.textContent = '❚❚';
+          btnText.textContent = 'Pause Flow';
+          playInterval = setInterval(() => {
+            stepNext();
+          }, 2400);
+        } else {
+          btnIcon.textContent = '▶';
+          btnText.textContent = 'Animate Flow';
+          clearInterval(playInterval);
+        }
+      }
+
+      // ==========================================
+      // 8. CAMERA MOVEMENTS & VIEW MODES
+      // ==========================================
+      function flyCameraTo(x, y, z, targetLookAt) {
+        new TWEEN.Tween(camera.position)
+          .to({ x, y, z }, 900)
+          .easing(TWEEN.Easing.Cubic.Out)
+          .start();
+
+        new TWEEN.Tween(controls.target)
+          .to({ x: targetLookAt.x, y: targetLookAt.y, z: targetLookAt.z }, 900)
+          .easing(TWEEN.Easing.Cubic.Out)
+          .start();
+      }
+
+      function setViewMode(mode, evt) {
+        document.querySelectorAll('.view-pill').forEach(b => b.classList.remove('active'));
+        const el = evt ? evt.target : (typeof event !== 'undefined' ? event.target : (window.event ? window.event.target : null));
+        if (el && el.classList) el.classList.add('active');
+
+        if (mode === 'isometric') {
+          flyCameraTo(450, 260, 560, new THREE.Vector3(0, 0, 0));
+        } else if (mode === 'topdown') {
+          flyCameraTo(0, 750, 60, new THREE.Vector3(0, 0, 0));
+        } else if (mode === 'elevation') {
+          flyCameraTo(780, 0, 0, new THREE.Vector3(0, 0, 0));
+        }
+      }
+
+      function resetCamera() {
+        flyCameraTo(450, 260, 560, new THREE.Vector3(0, 0, 0));
+      }
+
+      function focusTier(tier) {
+        const y = TIER_HEIGHTS[tier];
+        flyCameraTo(0, y + 140, 360, new THREE.Vector3(0, y, 0));
+      }
+
+      function focusCurrentRouteFlow() {
+        if (activeRoute.stepPositions && activeRoute.stepPositions[0]) {
+          const p = activeRoute.stepPositions[0];
+          flyCameraTo(p.x + 140, 0, p.z + 240, new THREE.Vector3(p.x, 0, p.z));
+        }
+      }
+
+      function isolateActiveCluster() {
+        nodeMeshes.forEach(mesh => {
+          mesh.visible = (mesh.userData.route.id === activeRoute.id);
+          if (mesh.userData.ring) mesh.userData.ring.visible = mesh.visible;
+        });
+      }
+
+      // ==========================================
+      // 9. SEARCH & MODULE FILTERING
+      // ==========================================
+      function filterByModule(mod, evt) {
+        document.querySelectorAll('.module-pill').forEach(b => b.classList.remove('active'));
+        const el = evt ? evt.target : (typeof event !== 'undefined' ? event.target : (window.event ? window.event.target : null));
+        if (el && el.classList) el.classList.add('active');
+
+        nodeMeshes.forEach(mesh => {
+          const match = (mod === 'ALL' || mesh.userData.route.module === mod);
+          mesh.visible = match;
+          if (mesh.userData.ring) mesh.userData.ring.visible = match && (mesh.userData.route.id === activeRoute.id);
+        });
+
+        // Select first visible route
+        const firstMatch = ROUTES_DATA.find(r => mod === 'ALL' || r.module === mod);
+        if (firstMatch) {
+          highlightRouteFlow(firstMatch);
+          activeStepIndex = 0;
+          updateInspectorUI(firstMatch);
+        }
+      }
+
+      function handleSearch(query) {
+        const q = query.toLowerCase().trim();
+        let matchCount = 0;
+
+        nodeMeshes.forEach(mesh => {
+          const r = mesh.userData.route;
+          const match = !q ||
+            r.path.toLowerCase().includes(q) ||
+            r.method.toLowerCase().includes(q) ||
+            r.title.toLowerCase().includes(q) ||
+            r.controller.toLowerCase().includes(q) ||
+            r.notes.toLowerCase().includes(q);
+
+          mesh.visible = match;
+          if (match) matchCount++;
+          if (mesh.userData.ring) mesh.userData.ring.visible = match && (r.id === activeRoute.id);
+        });
+
+        document.getElementById('active-route-count').textContent = `${matchCount} Routes Visible`;
+
+        if (q && matchCount > 0) {
+          const first = ROUTES_DATA.find(r =>
+            r.path.toLowerCase().includes(q) ||
+            r.method.toLowerCase().includes(q) ||
+            r.title.toLowerCase().includes(q)
+          );
+          if (first) {
+            highlightRouteFlow(first);
+          }
+        }
+      }
+
+      // ==========================================
+      // 10. CINEMATIC AUTO-TOUR
+      // ==========================================
+      let tourInterval = null;
+      function toggleAutoTour() {
+        isTourActive = !isTourActive;
+        const btn = document.getElementById('btn-tour');
+
+        if (isTourActive) {
+          btn.classList.add('active');
+          tourInterval = setInterval(() => {
+            tourIndex = (tourIndex + 1) % ROUTES_DATA.length;
+            const targetRoute = ROUTES_DATA[tourIndex];
+            highlightRouteFlow(targetRoute);
+            jumpToStep(0);
+          }, 5000);
+        } else {
+          btn.classList.remove('active');
+          clearInterval(tourInterval);
+        }
+      }
+
+      // ==========================================
+      // 11. MOUSE INTERACTION & RAYCASTING
+      // ==========================================
+      const tooltip = document.getElementById('node-tooltip');
+      const ttTitle = document.getElementById('tt-title');
+      const ttSub = document.getElementById('tt-sub');
+
+      function onPointerMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(nodeMeshes.filter(m => m.visible));
+
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          const r = hit.userData.route;
+          document.body.style.cursor = 'pointer';
+
+          tooltip.style.display = 'block';
+          tooltip.style.left = (event.clientX + 14) + 'px';
+          tooltip.style.top = (event.clientY + 14) + 'px';
+          ttTitle.textContent = `${r.method} ${r.path}`;
+          ttSub.textContent = r.controller;
+        } else {
+          document.body.style.cursor = 'default';
+          tooltip.style.display = 'none';
+        }
+      }
+
+      function onCanvasClick(event) {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(nodeMeshes.filter(m => m.visible));
+
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          const r = hit.userData.route;
+          highlightRouteFlow(r);
+          jumpToStep(0);
+        }
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // ==========================================
+      // 12. ANIMATION TICK & RENDER LOOP
+      // ==========================================
+      function animate(time) {
+        requestAnimationFrame(animate);
+
+        TWEEN.update();
+        controls.update();
+
+        // Animate traveling particle along active flow curves
+        if (flowParticle && activeLinkCurves.length > 0) {
+          particleT += 0.012;
+          if (particleT > 1.0) {
+            particleT = 0;
+            particleCurveIndex = (particleCurveIndex + 1) % activeLinkCurves.length;
+          }
+          const currentCurve = activeLinkCurves[particleCurveIndex];
+          if (currentCurve) {
+            const pt = currentCurve.getPoint(particleT);
+            flowParticle.position.copy(pt);
+          }
+        }
+
+        // Ambient rotation for halo rings
+        nodeMeshes.forEach(mesh => {
+          if (mesh.userData.ring && mesh.userData.ring.visible) {
+            mesh.userData.ring.rotation.z += 0.01;
+          }
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      // Initialize on load
+      window.onload = initThree;
+    </script>
+  </body>
+</html>
