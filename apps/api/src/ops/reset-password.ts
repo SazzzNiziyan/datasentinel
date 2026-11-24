@@ -12,11 +12,16 @@ export async function resetPassword(
 ): Promise<ResetPasswordResult> {
   const email = input.email.trim().toLowerCase();
   if (input.password.length < MIN_PASSWORD_LENGTH) {
-    return { reset: false, reason: 'password_too_short' };
+    return { reset: false, reason: `password_too_short (minimum ${MIN_PASSWORD_LENGTH} characters)` };
   }
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    return { reset: false, reason: 'user_not_found' };
+    const allUsers = await prisma.user.findMany({ select: { email: true } });
+    const emails = allUsers.map((u) => u.email).join(', ');
+    return {
+      reset: false,
+      reason: `user_not_found for "${email}". Available accounts: [${emails || 'no users found'}]`,
+    };
   }
   const passwordHash = await hashPassword(input.password);
   await prisma.$transaction([
@@ -35,21 +40,34 @@ export async function resetPassword(
  * USER_PASSWORD in the environment and DATABASE_URL pointing at the database. */
 async function main() {
   const databaseUrl = process.env.DATABASE_URL ?? '';
-  const { USER_EMAIL: email, USER_PASSWORD: password } = process.env;
-  if (databaseUrl === '' || !email || !password) {
-    console.error('Set DATABASE_URL, USER_EMAIL, and USER_PASSWORD first.');
+  const email = process.env.USER_EMAIL;
+  const password = process.env.USER_PASSWORD;
+
+  if (!databaseUrl) {
+    console.error('Error: DATABASE_URL is not set.');
     process.exitCode = 1;
     return;
   }
+  if (!email || !password) {
+    console.error('Usage: Set USER_EMAIL and USER_PASSWORD in your environment first.');
+    console.error('Example (PowerShell):');
+    console.error('  $env:USER_EMAIL = "your-email@example.com"');
+    console.error('  $env:USER_PASSWORD = "NewPassword1234!"');
+    console.error('  pnpm --filter @datasentinel/api user:reset-password');
+    process.exitCode = 1;
+    return;
+  }
+
   const prisma = createPrismaClient(databaseUrl);
   try {
     const result = await resetPassword(prisma, { email, password });
-    console.log(
-      result.reset
-        ? 'Password reset successfully. Active sessions revoked. You can sign in now.'
-        : `Password not reset: ${result.reason}`,
-    );
-    if (!result.reset) process.exitCode = 1;
+    if (result.reset) {
+      console.log('✅ Password reset successfully! Active sessions revoked.');
+      console.log(`You can now sign in at /sign-in with "${email}".`);
+    } else {
+      console.error(`❌ Password not reset: ${result.reason}`);
+      process.exitCode = 1;
+    }
   } finally {
     await prisma.$disconnect();
   }

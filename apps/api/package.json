@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "seed": "node --env-file=env/development.env --env-file-if-exists=../../.env dist/dev/seed.js",
     "user:create": "node dist/ops/create-user.js",
-    "user:reset-password": "node dist/ops/reset-password.js",
+    "user:reset-password": "node --env-file-if-exists=../../.env dist/ops/reset-password.js",
     "credentials:rewrap": "node --env-file=env/development.env --env-file-if-exists=../../.env dist/ops/rewrap-credentials.js"
   },
   "dependencies": {
