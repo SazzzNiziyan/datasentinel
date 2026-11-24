@@ -77,6 +77,46 @@ Prerequisites: Git, and a Node version manager that reads `.nvmrc` ([fnm](https:
 
 Backing services (PostgreSQL, Redis, MinIO), migrations, seed data, and app start commands are added to this section as the roadmap reaches them.
 
+## 🛠️ Operator & Administrative Commands
+
+DataSentinel is an enterprise-isolated platform with no public self-signup. Operators and system administrators manage accounts, credentials, and tenant workspaces using these built-in commands:
+
+### 1. Create a User (`user:create`)
+Bootstrap a new user account directly in the application database:
+```powershell
+$env:USER_EMAIL = "user@example.com"
+$env:USER_NAME = "Full Name"
+$env:USER_PASSWORD = "Password1234!"  # minimum 12 characters
+
+pnpm --filter @datasentinel/api user:create
+
+Remove-Item Env:USER_EMAIL, Env:USER_NAME, Env:USER_PASSWORD
+```
+
+### 2. Reset a User's Password (`user:reset-password`)
+Re-hash and update a user's password securely while immediately revoking all stale sessions:
+```powershell
+$env:USER_EMAIL = "user@example.com"
+$env:USER_PASSWORD = "NewPassword1234!"  # minimum 12 characters
+
+pnpm --filter @datasentinel/api user:reset-password
+
+Remove-Item Env:USER_EMAIL, Env:USER_PASSWORD
+```
+
+### 3. Create a Workspace & Assign Owner (`workspace:create`)
+Provision a workspace and automatically assign a user as its primary `owner`:
+```powershell
+$env:USER_EMAIL = "user@example.com"
+$env:WORKSPACE_NAME = "Data Engineering Team"
+
+pnpm --filter @datasentinel/api workspace:create
+
+Remove-Item Env:USER_EMAIL, Env:WORKSPACE_NAME
+```
+
+*(Tip: When running against a remote production database like Supabase or Render, prepend `$env:DATABASE_URL = "<your-db-connection-string>"` to any command above).*
+
 ## The main workflow
 
 ```mermaid
