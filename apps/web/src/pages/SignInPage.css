@@ -7,7 +7,7 @@
 }
 
 .sign-in__panel {
-  width: min(26rem, 100%);
+  width: min(28rem, 100%);
   display: grid;
   gap: var(--space-6);
   padding: var(--space-8);
@@ -39,8 +39,60 @@
   font-weight: var(--weight-strong);
 }
 
+.sign-in__field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.sign-in__link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-compact);
+  font-weight: var(--weight-regular);
+  color: var(--color-selected);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sign-in__link-btn:hover {
+  color: var(--color-text);
+}
+
 .sign-in__field .text-input {
   font-weight: var(--weight-regular);
+}
+
+.sign-in__help-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+  border: var(--border-width) solid var(--color-border-control);
+  font-size: var(--text-compact);
+}
+
+.sign-in__help-title {
+  font-weight: var(--weight-strong);
+  margin: 0;
+}
+
+.sign-in__help-text {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height-body);
+}
+
+.sign-in__help-code {
+  display: block;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-divider);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  overflow-x: auto;
+  user-select: all;
 }
 
 .sign-in__error {
@@ -53,6 +105,56 @@
 
 .sign-in__error-title {
   font-weight: var(--weight-strong);
+}
+
+.sign-in__demo-section {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.sign-in__divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-compact);
+  margin: var(--space-2) 0;
+}
+
+.sign-in__divider::before,
+.sign-in__divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.sign-in__divider-label {
+  padding: 0 var(--space-3);
+  font-weight: var(--weight-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+.sign-in__demo-btn {
+  width: 100%;
+  font-weight: var(--weight-strong);
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sign-in__demo-btn:hover {
+  background: var(--color-surface);
+}
+
+.sign-in__demo-caption {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 39.99rem) {
