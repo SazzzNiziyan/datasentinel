@@ -28,7 +28,10 @@ export function qualifiesForIncident(check: {
   status: string;
   ruleSeverity: 'critical' | 'warning' | 'info';
 }): boolean {
-  return check.status === 'failed' && check.ruleSeverity === 'critical';
+  return (
+    check.status === 'failed' &&
+    (check.ruleSeverity === 'critical' || check.ruleSeverity === 'warning')
+  );
 }
 
 export type GroupingDecision = 'create' | 'append' | 'reopen';
