@@ -2,6 +2,17 @@
 
 DataSentinel is a data-quality and pipeline-reliability platform. It checks whether important datasets are fresh, complete, valid, and believable; records evidence when a check fails; and helps a person investigate and resolve the issue.
 
+## 🚀 Live Demo & Recruiter Access
+
+DataSentinel is configured for instant recruiter and reviewer walkthroughs with pre-seeded datasets, quality checks, and AI investigation reports:
+
+- **One-Click Login:** Visit the sign-in page and click **"⚡ One-Click Recruiter Demo"** to access the dashboard instantly with zero typing.
+- **Manual Demo Credentials:**
+  - **Email:** `recruiter@datasentinel.dev`
+  - **Password:** `DemoPassword2026!`
+  - **Workspace:** `DataSentinel Production`
+  - **Access Level:** Engineer & Analyst (full access to datasets, schema diffs, rule triggers, and AI reports)
+
 ## Product promise
 
 DataSentinel should catch a bad-data condition before it silently reaches a report or customer. It must show what it observed, which rule failed, what evidence supports the incident, and what a human can check next. AI may summarize evidence and suggest actions; it must never silently change monitored production data.
